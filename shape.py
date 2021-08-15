@@ -1,8 +1,15 @@
-# the possible Shapes of a Piece, these are generated as a list of templates
-# id - the class ID of the piece
-# orientations - all the possible orientations
 class Shape:
+  """The Class corresponding to the Shape that a Piece represents.
+
+  This is meant as a template for the Piece class to reference.
+  """
   def __init__(self, id, orientations):
+      """
+      Args:
+        id (int): The ID of the Shape.
+        orientations (List): The possible orientations of the Shape as a List of Lists of ' '
+        and '#', which represent an empty and filled cell for that Shape.
+      """
       self.id = id
       self.max_rotations = len(orientations)
       self.orientations = orientations
@@ -12,23 +19,17 @@ class Shape:
       self.width = len(orientations[0][0])
       self.height = len(orientations[0])
 
-      self.generate_shape_coord()
+      self.generate_all_shape_coord()
 
-  # returns the shape orientation of a piece, given a rotation number
-  def get_orientation(self, rotation):
-      return self.orientations[rotation % self.max_rotations]
-
-  # get the coordinates of cells occupied by a shape
-  def get_coord_occupied(self, rotation):
-      return self.shape_coord[rotation % self.max_rotations]
-
-  # generates shape coord all at once
-  def generate_shape_coord(self):
+  def generate_all_shape_coord(self):
+      """Generates shape coord all at once.
+      """
       for rotation in range(self.max_rotations):
-          self.shape_coord.append(list(self.generate_shape_coord_iterative(rotation)))
+          self.shape_coord.append(list(self.generate_shape_coord(rotation)))
 
-  # generate the occupied coordinates of a shape
-  def generate_shape_coord_iterative(self, rotation):
+  def generate_shape_coord(self, rotation):
+      """Generate the occupied coordinates of a shape.
+      """
       orientation = self.get_orientation(rotation)
       width = self.width
       height = self.height
@@ -37,6 +38,16 @@ class Shape:
           if orientation[offset_y][offset_x] != ' ':
             yield offset_y, offset_x
 
+  def get_orientation(self, rotation):
+      """Returns the orientations of a piece, given a rotation value.
+      """
+      return self.orientations[rotation % self.max_rotations]
+
+  def get_coord_occupied(self, rotation):
+      """Returns the coordinates of cells occupied by a Shape.
+      """
+      return self.shape_coord[rotation % self.max_rotations]
+
   def get_id(self):
     return self.id
 
@@ -44,7 +55,6 @@ class Shape:
 # id - 0 / empty, 1 / I, 2 / O, 3 / T, 4 / S, 5 / Z, 6 / J, 7 / L
 # first shape is empty
 
-# shape coords
 SHAPE_NULL_COORDS = [[' ']]
 
 SHAPE_I_COORDS = [[
@@ -137,6 +147,8 @@ SHAPE_L_COORDS = [[
     ' # ',
     ' ##',
 ]]
+
+# declare all the shapes
 
 SHAPE_NULL = Shape(0, SHAPE_NULL_COORDS)
 

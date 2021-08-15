@@ -1,0 +1,5 @@
+gym==0.18.3
+tensorflow==2.5.0
+graphviz==0.17
+pydot==1.4.2
+pydotplus==2.0.2
