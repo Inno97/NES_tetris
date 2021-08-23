@@ -93,6 +93,9 @@ if possible.
 > 8. Proportion of Cells on the Left - The proportion of cells that are filled and at the left
 > of the board. Generally, the agent should prioritise the left more than the right.
 
+> 9. Right Well - If the rightmost column is empty so that Tetrises can be scored. Generally,
+> the agent should maintain a right well as that is the only way to score a Tetris.
+
 ## Gameplay
 
 Given a pre-generated set of pieces (even random), the game of Tetris can be modelled as a very 
@@ -113,5 +116,19 @@ before evaluation.
 A breadth-first search might be able to generate more moves (including actions like tucks and spins),
 but for simplicity and speed, we utilise this pre-generated permutation first.
 
-### References:
+Following the actual game, the piece drops with moves. This makes the game harder as the higher 
+parts of the board (top 1/3) will not be really playable.
+
+## References:
+
+### tetris-ai - A bot that plays tetris using deep reinforcement learning.
 https://github.com/nuno-faria/tetris-ai
+
+## The Game of Tetris in Machine Learning
+https://arxiv.org/pdf/1905.01652.pdf
+
+### Learn to Play Tetris with Deep Reinforcement Learning
+https://openreview.net/pdf?id=8TLyqLGQ7Tg
+
+### Tetris AI – The (Near) Perfect Bot
+https://codemyroad.wordpress.com/2013/04/14/tetris-ai-the-near-perfect-player/

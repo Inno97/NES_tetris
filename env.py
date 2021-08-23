@@ -1,4 +1,4 @@
-# gym environment that follows gym interface"""
+# gym environment that follows gym interface
 import gym
 import numpy as np
 
@@ -24,6 +24,8 @@ class NesTetrisEnv(gym.Env):
     done = self.board.is_game_over()
 
     reward = 1
+    #reward += self.board.get_reward_holes()
+    reward += self.board.update_and_get_reward_holes()
     reward += self.board.get_reward_increase(self.board.get_lines_cleared_recently())
     if done:
       reward -= 5

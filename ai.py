@@ -56,8 +56,8 @@ class Network:
     If verbose, prints out a summary of the model created.
     """
     model =  tf.keras.models.Sequential([
-        tf.keras.layers.Dense(32, input_dim=self.state_size, activation='relu'),
-        tf.keras.layers.Dense(32, activation='relu'),
+        tf.keras.layers.Dense(64, input_dim=self.state_size, activation='relu'),
+        tf.keras.layers.Dense(64, activation='relu'),
         tf.keras.layers.Dense(1, activation='linear'),
     ])
 

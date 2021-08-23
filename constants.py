@@ -55,3 +55,4 @@ PIECE_ID_Z = 5
 PIECE_ID_J = 6
 PIECE_ID_L = 7
 PIECE_ID_CURRENT = 8
+PIECE_Y_OFFSET_INITIAL = [0, 2, 0, 1, 1, 1, 1, 1] # y offset needed for initial placement
