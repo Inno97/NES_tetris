@@ -3,3 +3,4 @@ logs/*
 output.log
 weights/*
 !weights/.gitkeep
+!weights/weights_sample.h5

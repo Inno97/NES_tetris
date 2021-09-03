@@ -2,6 +2,9 @@
 
 import yaml, statistics, time, os
 import tensorflow as tf
+import matplotlib.pyplot as plt
+import numpy as np
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 config = yaml.safe_load(open('config.yml'))
 
@@ -23,7 +26,15 @@ log.info('======================================================================
 log.info('training for ' + str(total_episodes) + ' episodes')
 log.info('======================================================================================')
 
+
 with tf.device('/GPU:0'):
+  fig, ax = plt.subplots()
+
+  episode_axis = []
+  rewards_axis = []
+  scores_axis = []
+  lines_cleared_axis = []
+
   while not done:
     obs = env.reset()
     time_start = time.time()
@@ -83,9 +94,40 @@ with tf.device('/GPU:0'):
       obs, reward, sample_done, info = env.step(action)
     env.render()
 
+    # update graphs
+    episode_axis.append(episodes_ran)
+    rewards_axis.append(statistics.mean(rewards))
+    scores_axis.append(statistics.mean(scores))
+    lines_cleared_axis.append(statistics.mean(lines_cleared))
+
+    plt.clf()
+    plt.plot(np.array(episode_axis), np.array(rewards_axis))
+    ax.set_title('Rewards')
+    plt.xlabel('Episodes')
+    plt.ylabel('Rewards')
+    plt.grid()
+    plt.savefig('weights/' + config['SETTINGS']['WEIGHTS_FILENAME'] + '_rewards.jpg')
+
+    plt.clf()
+    plt.plot(np.array(episode_axis), np.array(scores_axis))
+    ax.set_title('Scores')
+    plt.xlabel('Episodes')
+    plt.ylabel('Scores')
+    plt.grid()
+    plt.savefig('weights/' + config['SETTINGS']['WEIGHTS_FILENAME'] + '_scores.jpg')
+
+    plt.clf()
+    plt.plot(np.array(episode_axis), np.array(lines_cleared_axis))
+    ax.set_title('Lines Cleared')
+    plt.xlabel('Lines Cleared')
+    plt.ylabel('Rewards')
+    plt.grid()
+    plt.savefig('weights/' + config['SETTINGS']['WEIGHTS_FILENAME'] + '_lines_cleared.jpg')
+
     if episodes_ran >= total_episodes:
       done = True
       break
+
   network.save()
 
   log.info('training done')

@@ -1,5 +1,6 @@
 # reinforcement learning
 import random, os
+from re import L
 import tensorflow as tf
 import numpy as np
 import constants
@@ -26,7 +27,7 @@ class ExperienceBuffer:
     return random.sample(self.buffer, size)
 
 class Network:
-  def __init__(self, state_size=constants.STATE_SIZE, discount=1, epsilon=1, epsilon_min=0.0001, epsilon_episode_limit=500):
+  def __init__(self, state_size=constants.STATE_SIZE, discount=1, epsilon=1, epsilon_min=0, epsilon_episode_limit=500):
     """The network representing the agent.
 
     TODO: fill this in
@@ -58,6 +59,7 @@ class Network:
     model =  tf.keras.models.Sequential([
         tf.keras.layers.Dense(64, input_dim=self.state_size, activation='relu'),
         tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(32, activation='relu'),
         tf.keras.layers.Dense(1, activation='linear'),
     ])
 
@@ -89,7 +91,7 @@ class Network:
 
     ratings = self.predict_ratings(obs)
     for i in range(len(obs)):
-      if best_rating is None or (best_rating is not None and ratings[i] > best_rating):
+      if best_rating is None or ratings[i] > best_rating:
         best_rating = ratings[i]
         state_to_use = i
 
@@ -98,18 +100,7 @@ class Network:
   def predict_ratings(self, states):
     """Returns the predictions from the agent as a List.
     """
-    if len(states[0]) == 1:
-      inputs = np.array(states)
-    else:
-      inputs = np.array([state[1] for state in states])
-
-    # run the prediction, catch ValueError when states contain List() objs because
-    # the state contains moves / board info, which are of different dimensions
-    # and are not convertible under np.array(), and end up as List()s
-    try:
-      predictions = self.model.predict(states)
-    except ValueError:
-      predictions = self.model.predict(np.array([state[1] for state in states]))
+    predictions = self.model.predict(np.array([state[1] for state in states]))
 
     return [predict[0] for predict in predictions]
 
@@ -143,7 +134,8 @@ class Network:
           continue
 
         obs, reward, done, info = env.step(action)
-        self.experiences.add((current_state, reward, next_state, done))
+        self.experiences.add((current_state, reward, next_state, done, action))
+
         current_state = next_state
         steps += 1
         total_reward += reward
@@ -158,6 +150,8 @@ class Network:
       lines_cleared_tetris.append(env.board.get_line_clear_tetris())
 
       self.learn()
+      if episode % 10 == 0 and episode != 0:
+        log.info('Trained for ' + str(episode) + ' episodes')
 
     return [steps, rewards, scores, lines_cleared, lines_cleared_single, lines_cleared_double, \
       lines_cleared_triple, lines_cleared_tetris]
@@ -183,7 +177,7 @@ class Network:
     except Exception:
       log.warn('Failed to save')
 
-  def learn(self, batch_size=2048, epochs=1):
+  def learn(self, batch_size=2048, epochs=1, episodes=1):
     """Model learns about recent experiences.
 
     Batch_size corresponds to the random experiences from experience buffer.
@@ -195,18 +189,20 @@ class Network:
     train_x = []
     train_y = []
 
-    states = np.array([[[0, 0, 0], x[2]] for x in batch])
+    # NOTE: testing if we should put in the original move data
+    states = np.array([[x[4], x[2]] for x in batch])
+    #states = np.array([[[0, 0, 0], x[2]] for x in batch])
+    
     ratings = self.predict_ratings(states)
 
-    for i, (previous_state, reward, next_state, done) in enumerate(batch):
+    for i, (current_state, reward, next_state, done, action) in enumerate(batch):
       if not done:
-        rating = ratings[i]
-        q = reward + self.discount * rating
+        q = reward + self.discount * ratings[i]
       else:
         q = reward
-      train_x.append(previous_state)
+      train_x.append(current_state)
       train_y.append(q)
 
     self.model.fit(np.array(train_x), np.array(train_y), batch_size=len(train_x), verbose=0,
                   epochs=epochs, callbacks=[self.tensorboard])
-    self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay)
+    self.epsilon = max(self.epsilon_min, self.epsilon - self.epsilon_decay * episodes)

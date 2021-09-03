@@ -1,7 +1,7 @@
 # General Training Behavior
 
-The agent is trained for 2000 episodes at 50 episode intervals, and the epsilon starts at 0.95
-and decays linearly until 1500 episodes. Agent performs badly until about 1000 episodes as
+The agent is trained for 3000 episodes at 50 episode intervals, and the epsilon starts at 0.95
+and decays linearly until 2000 episodes. Agent performs badly until about 1500 episodes as
 expected, and then it should start improving from there.
 
 The trend to observe in training would be of course, exponential improvement starting at around
@@ -96,200 +96,61 @@ One way to fix this would be to implement tucks and spins. Although this gives t
 ability to fix these problems rather than prevent it from doing it in the first place. It's not
 going to (and didn't) dramatically improve the agent's performance.
 
-1. Initial board state
-> =====================
-> | | | | | |=|=| | | |
-> | | | | | | |=|=| | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | |X| | | | | | | |
-> | | |X|X|X|X|X|X|X| |
-> =====================
-
-2. After dropping a Z piece, a hole is created
-> =====================
-> | | | | | | |=|=| | |
-> | | | | | |=|=| | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | |X| | | | | | | | |
-> |X|X|X| | | | | | | |
-> |X| |X|X|X|X|X|X|X| |
-> =====================
-
-3. After dropping a S piece, an overhang is created
-> =====================
-> | | | | | |=|=| | | |
-> | | | | | |=|=| | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | |X| | |X|X| | | | |
-> |X|X|X|X|X| | | | | |
-> |X| |X|X|X|X|X|X|X| |
-> =====================
-
-4. The end state, where the hole is not fixed, but the overhang is
-> =====================
-> | | | | | |=|=| | | |
-> | | | | | |=|=| | | |
-> | | | | |X| |X|X|X|X|
-> | | |X|X|X| | |X|X| |
-> | | |X|X|X|X|X|X|X|X|
-> | |X|X|X|X| |X|X|X| |
-> | |X|X|X|X|X| |X|X| |
-> |X|X|X| |X| |X|X| |X|
-> | |X|X| |X|X|X|X|X|X|
-> |X|X|X|X|X| |X|X|X|X|
-> |X|X|X|X|X|X|X|X| |X|
-> | |X|X| |X|X|X|X|X|X|
-> | |X|X|X| |X|X|X|X|X|
-> |X|X|X|X| |X|X|X|X|X|
-> |X|X| | |X|X|X| |X| |
-> |X|X|X|X|X|X|X|X|X| |
-> | |X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X| |X|X|X|X|
-> |X|X|X|X|X| |X|X|X|X|
-> |X| |X|X|X|X|X|X|X|X|
-> =====================
+> 1. Initial board state   2. After dropping a Z    3. After dropping a S   4. The end state, 
+>                          piece, a hole is         piece, an overhang is   where the hole is not 
+>                          created                  created                 fixed, but the overhang is
+> =====================    =====================    =====================   =====================
+> | | | | | |=|=| | | |    | | | | | | |=|=| | |    | | | | | |=|=| | | |   | | | | | |=|=| | | |
+> | | | | | | |=|=| | |    | | | | | |=|=| | | |    | | | | | |=|=| | | |   | | | | | |=|=| | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   | | | | |X| |X|X|X|X|
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   | | |X|X|X| | |X|X| |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   | | |X|X|X|X|X|X|X|X|
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   | |X|X|X|X| |X|X|X| |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   | |X|X|X|X|X| |X|X| |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   |X|X|X| |X| |X|X| |X|
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   | |X|X| |X|X|X|X|X|X|
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   |X|X|X|X|X| |X|X|X|X|
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   |X|X|X|X|X|X|X|X| |X|
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   | |X|X| |X|X|X|X|X|X|
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   | |X|X|X| |X|X|X|X|X|
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   |X|X|X|X| |X|X|X|X|X|
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   |X|X| | |X|X|X| |X| |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   |X|X|X|X|X|X|X|X|X| |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |   | |X|X|X|X|X|X|X|X| |
+> | | | | | | | | | | |    | |X| | | | | | | | |    | |X| | |X|X| | | | |   |X|X|X|X|X| |X|X|X|X|
+> | | |X| | | | | | | |    |X|X|X| | | | | | | |    |X|X|X|X|X| | | | | |   |X|X|X|X|X| |X|X|X|X|
+> | | |X|X|X|X|X|X|X| |    |X| |X|X|X|X|X|X|X| |    |X| |X|X|X|X|X|X|X| |   |X| |X|X|X|X|X|X|X|X|
+> =====================    =====================    =====================   =====================
 
 After implementing a way to create tucks and spins, the agent is able to use this to rectify the
 overhangs (if it chooses to). Below are 2 board states that show this. Although this trained 
 model does not care about holes and transitions, so it makes pretty bad decisions.
 
-1. An overhang is created after a Z piece is placed.
-> | | | | | |=|=|=| | |
-> | | | | | | | |=| | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | |X|X| | | |
-> | | | | | | |X|X| | |
-> =====================
-
-2. Overhang is fixed by a tuck
-> =====================
-> | | | | | |=|=| | | |
-> | | | | | |=|=| | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | |X| |X|X| | | |
-> | | | |X|X|X|X|X| | |
-> =====================
-
-3. Overhang after placing a Z piece.
-> =====================
-> | | | | | |=|=|=| | |
-> | | | | | | |=| | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | |X|X| | | | |
-> | | | | | |X|X|X| | |
-> | |X|X| |X|X|X|X|X| |
-> | |X|X|X|X|X|X|X|X| |
-> | |X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X| |X| |X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X| | |
-> =====================
-
-4. Overhang is fixed by a spin
-> =====================
-> | | | | | |=|=| | | |
-> | | | | | |=|=| | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | |X|X| | | | |
-> | | |X|X|X|X|X|X| | |
-> | |X|X|X|X|X|X|X|X| |
-> | |X|X|X|X|X|X|X|X| |
-> | |X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X| |X| |X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X| | |
-> =====================
+> 1. An overhang is        2. Overhang is fixed     3. Overhang after        4. Overhang is 
+> created after a Z        by a tuck                placing a Z piece.       fixed by a spin
+> piece is placed.         
+> =====================    =====================    =====================    =====================
+> | | | | | |=|=|=| | |    | | | | | |=|=| | | |    | | | | | |=|=|=| | |    | | | | | |=|=| | | |
+> | | | | | | | |=| | |    | | | | | |=|=| | | |    | | | | | | |=| | | |    | | | | | |=|=| | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | |X|X| | | | |    | | | | |X|X| | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | |X|X|X| | |    | | |X|X|X|X|X|X| | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | |X|X| |X|X|X|X|X| |    | |X|X|X|X|X|X|X|X| |
+> | | | | | | | | | | |    | | | | | | | | | | |    | |X|X|X|X|X|X|X|X| |    | |X|X|X|X|X|X|X|X| |
+> | | | | | | | | | | |    | | | | | | | | | | |    | |X|X|X|X|X|X|X|X| |    | |X|X|X|X|X|X|X|X| |
+> | | | | | | | | | | |    | | | | | | | | | | |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> | | | | | |X|X| | | |    | | | |X| |X|X| | | |    |X| |X| |X|X|X|X|X| |    |X| |X| |X|X|X|X|X| |
+> | | | | | | |X|X| | |    | | | |X|X|X|X|X| | |    |X|X|X|X|X|X|X|X| | |    |X|X|X|X|X|X|X|X| | |
+> =====================    =====================    =====================    =====================
 
 ## Right Well
 
@@ -308,52 +169,30 @@ to allow the agent to perform a Tetris. The two moves below show the right well 
 to make a Tetris. Since the stacking isn't perfect, the agent doesn't get a Tetris, but the idea
 is there.
 
-> =====================
-> | | | | | |=|=|=|=| |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> |X|X| | | | | | | | |
-> | |X|X|X|X| | | | | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X| |X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X| |X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> =====================
-
-> =====================
-> | | | | | |=|=| | | |
-> | | | | | |=|=| | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> |X|X| | | | | | | | |
-> | |X|X|X|X| | | | | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X| |X|X|X|X|
-> |X|X|X| |X|X|X|X|X|X|
-> =====================
-> =====================
+> 1. The board state has   2. Which immediately
+> a right well             gets covered...
+> =====================    =====================
+> | | | | | |=|=|=|=| |    | | | | | |=|=| | | |
+> | | | | | | | | | | |    | | | | | |=|=| | | |
+> | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |
+> |X|X| | | | | | | | |    | | | | | | | | | | |
+> | |X|X|X|X| | | | | |    | | | | | | | | | | |
+> |X|X|X|X|X|X|X|X| | |    |X|X| | | | | | | | |
+> |X|X|X|X|X|X|X|X| | |    | |X|X|X|X| | | | | |
+> |X|X|X|X|X|X|X|X| | |    |X|X|X|X|X|X|X|X| | |
+> |X|X|X|X|X| |X|X|X| |    |X|X|X|X|X|X|X|X| | |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X| | |
+> |X|X|X| |X|X|X|X|X| |    |X|X|X|X|X| |X|X|X|X|
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X| |X|X|X|X|X|X|
+> =====================    =====================
 
 ### Tweaking rewards for right well
 
@@ -412,53 +251,30 @@ In an example game, only 1 line was scored, but we can see the 2 board states be
 well is avoided but the stacking was bad. In the end, the agent is able to score 1 paltry line
 but this seems to be the right direction. The agent just fails due to it stacking like an idiot.
 
-> =====================
-> | | | | | |=|=|=|=| |
-> | | | | | | | | | | |
-> | | | |X|X|X| | | | |
-> | | | |X|X|X|X|X|X| |
-> | |X|X|X| | |X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X| |X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X| |X|X|X|X|X|X|X| |
-> |X|X|X|X|X| |X|X|X| |
-> |X| |X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> | |X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X| |X| |X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X| | |
-> =====================
+> =====================    =====================
+> | | | | | |=|=|=|=| |    | | | | | |=|=|=| | |
+> | | | | | | | | | | |    | | | | | | | |=| | |
+> | | | |X|X|X| | | | |    | | | | | | | | | | |
+> | | | |X|X|X|X|X|X| |    | | | |X|X|X| | | | |
+> | |X|X|X| | |X|X|X| |    | | | |X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    | |X|X|X| | |X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X| |X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X| |X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X| |X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X| |X|X|X| |    |X| |X|X|X|X|X|X|X| |
+> |X| |X|X|X|X|X|X| | |    |X|X|X|X|X| |X|X|X| |
+> |X|X|X|X|X|X|X|X| | |    |X| |X|X|X|X|X|X| | |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X| | |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> | |X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    | |X|X|X|X|X|X|X|X|X|
+> |X| |X| |X|X|X|X|X| |    |X| |X| |X|X|X|X|X|X|
+> |X|X|X|X|X|X|X|X| | |    |X|X|X|X|X|X|X|X| |X|
+> =====================    =====================
 
-> =====================
-> | | | | | |=|=|=| | |
-> | | | | | | | |=| | |
-> | | | | | | | | | | |
-> | | | |X|X|X| | | | |
-> | | | |X|X|X|X|X|X| |
-> | |X|X|X| | |X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X| |X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X| |X|X|X|X|X|X|X| |
-> |X|X|X|X|X| |X|X|X| |
-> |X| |X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> | |X|X|X|X|X|X|X|X|X|
-> |X| |X| |X|X|X|X|X|X|
-> |X|X|X|X|X|X|X|X| |X|
-> =====================
-
-Furthermore, when training, the agent sometimes performs very well, suggesting that it
+Furthermore, after training, the agent sometimes performs very well, suggesting that it
 is capable at times if it is lucky.
 
 > ======================================================================================
@@ -490,70 +306,28 @@ is unable to dig itself out of the situation.
 During training, the agent performs pretty badly in terms of line clears, but occassionally has a
 good game. The agent right now is good at maintaining a right well at the expense of board state.
 
-> | | | | | |=|=|=|=| |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | |X| | | | |
-> | | |X|X|X|X| | |X| |
-> | | |X|X|X|X| |X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X| |X| |
-> |X|X|X| |X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X| |X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X| |X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-
-Sometime later, the agent finds itself in a similar situation.
-
-> | | | | | |=|=|=|=| |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | |X| |
-> |X|X| |X|X| |X| |X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> | |X|X|X|X|X| |X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X| |X| |
-> |X|X|X| |X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X| |X|X|X|X|X|X| |
-> |X|X|X|X| |X|X|X|X|X|
-> 
-> | | | | | |=|=|=| | |
-> | | | | | | |=| | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | | | |
-> | | | | | | | | |X| |
-> |X|X| |X|X| |X| |X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> | |X|X|X|X|X| |X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X| | |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X|X|X| |
-> |X|X|X|X|X|X|X| |X|X|
-> |X|X|X| |X|X|X|X|X|X|
-> |X|X| |X|X|X|X|X|X|X|
-> |X|X|X|X| |X|X|X|X|X|
+> =====================    =====================    =====================
+> | | | | | |=|=|=|=| |    | | | | | |=|=|=|=| |    | | | | | |=|=|=| | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | |=| | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | |X| | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | |X|X|X|X| | |X| |    | | | | | | | | |X| |    | | | | | | | | | | |
+> | | |X|X|X|X| |X|X| |    |X|X| |X|X| |X| |X| |    | | | | | | | | |X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X| |X|X| |X| |X| |
+> |X|X|X|X|X|X|X|X| | |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X| | |    | |X|X|X|X|X| |X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    | |X|X|X|X|X| |X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X| | |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X| | |    |X|X|X|X|X|X|X|X| | |
+> |X|X|X|X|X|X|X| |X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X| | |
+> |X|X|X| |X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X| |X|X|X|X|X|X| |    |X|X|X|X|X|X|X| |X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X| |X|X|X|X|X| |    |X|X|X|X|X|X|X| |X|X|
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X| |X|X|X|X|X|X|
+> |X|X|X|X| |X|X|X|X| |    |X|X| |X|X|X|X|X|X| |    |X|X| |X|X|X|X|X|X|X|
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X| |X|X|X|X|X|    |X|X|X|X| |X|X|X|X|X|
+> =====================    =====================    =====================
 
 ## Re-evaluating Features
 
@@ -654,6 +428,8 @@ due to a triple that was scored.
 > |X|X|X|X|X|X|X|X|X| |
 > |X|X|X| | |X|X|X|X| |
 
+Seems like we'll just stick to not giving rewards for a right well.
+
 The general strategy that the agent should use when making a move:
 
 1. Don't make holes unless necessary
@@ -677,6 +453,7 @@ in this without making a hole, is to use an I piece (which is something that doe
 that often.
 
 ## Reward for less holes / penalty for holes
+
 Actively disincentivise moves that create holes. There will be situations where holes are mandatory.
 
 When rewards were given for maintaining a right well, the agent makes sure it does so at the expense
@@ -705,157 +482,137 @@ With this, we have managed to return to a rather stable agent. However, as can s
 the majority of line clears are still single line clears. That said, it is not 100% indicative of
 what the result will be. The main thing to look out for, is how the agent maintains a proper board.
 
-### Analysis of Sample Game
+We now add in rewards for 3 factors:
+1. Presence of a right well
+2. Presence of lines that are ready to clear
+3. Number of line clears
 
+And tweaked the features as:
+board_height, bumpiness, holes, holes_created
+lines_cleared, lines_ready_to_clear, row_transitions, col_transitions, right_well
+
+Along with changing the layers used:
+tf.keras.layers.Dense(64, input_dim=self.state_size, activation='relu'),
+tf.keras.layers.Dense(64, activation='relu'),
+tf.keras.layers.Dense(32, activation='relu'),
+tf.keras.layers.Dense(1, activation='linear'),
+
+Finally with some minor changes to the learning (add in move data in experience buffer).
+
+With now an agent that is pretty good?
+
+> ======================================================================================
+>  * Total Games: 2150
+>  * Took total / per game (seconds): 26940.668691396713 / 538.8133738279342
+>  * Total Steps: 408542
+>  * Epsilon: 0
+>  * (Reward / Score / Lines Cleared)
+>  * Median: 49019.0 / 540180.0 / 669.5
+>  * Mean: 112330.38 / 1264629.6 / 1487.48
+>  * Min: 2818 / 41760 / 51
+>  * Max: 600341 / 6754320 / 8077
+> ======================================================================================
+>  * Lines Cleared Statistics (Single / Double / Triple / Tetris):
+>  * Median: 511.0 / 57.0 / 8.5 / 2.0
+>  * Mean: 1152.78 / 131 / 17.94 / 4.72
+>  * Min: 38 / 5 / 0 / 0
+>  * Max: 6281 / 724 / 101 / 25
+> ======================================================================================
+
+Amazing progress, but that's an unreasonable number of lines to clear in NES Tetris, so
+we'll prematurely end the game at 300 line clears to speed things up, and to see if the
+agent can score better.
+
+> =====================
+> | | | | | |=|=|=| | |
+> | | | | | | |=| | | |
 > | | | | | | | | | | |
-> | | | | | | |X|X| | |
-> | | | | | | |X|X|X|X|
-> | | | | |X|X|X|X|X|X|
-> | | |X|X|X|X|X|X|X|X|
-> | |X|X|X|X|X|X|X|X|X|
-> | |X|X|X|X|X|X|X|X|X|
-> |X|X|X|X|X|X|X|X|X| |
-> | |X|X|X|X|X|X|X|X|X|
-> |X|X|X| |X|X|X|X|X|X|
-> |X| |X|X|X|X|X|X|X|X|
-> |X|X|X|X| |X|X|X|X| |
-> |X|X| |X|X|X|X|X|X|X|
-> | |X|X|X|X|X|X|X|X|X|
-> |X|X|X|X|X| |X|X|X|X|
-> |X|X|X|X|X|X|X| |X|X|
+> | | | | | | | | | | |
+> | | | | | | | | | | |
+> | | | | | | | | | | |
+> | | | | | | | | | | |
+> | | | | | | | | | | |
+> | | | | | | | | | | |
+> | | | | | | | | | | |
+> | | | | | | | | | | |
+> | | | | | | | | | | |
+> | | | | | | | | | | |
+> |X| | | | | | | | | |
+> |X|X| | | | | | | |X|
+> |X|X| | | | | | | |X|
+> |X|X| | | | | | | |X|
+> |X|X|X|X|X|X|X| | |X|
 > |X|X|X|X| |X|X|X|X|X|
-> |X|X| |X|X|X|X|X|X|X|
-> |X| |X|X|X|X|X|X|X|X|
-> |X| |X|X|X|X|X|X|X|X|
-> ===============================================================
-> ======FINISHED=======
-> Score: 132120
-> Lines cleared: 139
-> ===============================================================
-> Lines cleared:
-> Single: 106
-> Double: 10
-> Triple: 3
-> Tetris: 1
-> ===============================================================
+> |X|X|X|X|X|X|X| |X|X|
+> =====================
 
-Latest trained agent:
-Overall, this agent performs decently, but the minimum score is 
-======================================================================================
- * Total Games: 2000
- * Took total / per game (seconds): 1269.1433913707733 / 25.382867827415467
- * Total Steps: 169072
- * Epsilon: 0.0001
- * (Reward / Score / Lines Cleared)
- * Median: 19105.0 / 55260.0 / 60.5
- * Mean: 27768.14 / 62805.6 / 79.08
- * Min: 1162 / 3960 / 5
- * Max: 162113 / 227880 / 272
-======================================================================================
- * Lines Cleared Statistics (Single / Double / Triple / Tetris):
- * Median: 49.0 / 4.0 / 1.0 / 0.0
- * Mean: 66.18 / 5.12 / 0.78 / 0.08
- * Min: 3 / 0 / 0 / 0
- * Max: 224 / 19 / 3 / 1
-======================================================================================
+This is a sample game at 300 line clears. The board may not be ideal, but it definitely
+is performing pretty well compared to previous attempts. This is after 2150 games, which 
+is barely after the agent stops exploring. (Performance increases exponentially after 
+2000 games, but we should expect it to not maintain it after a while)
 
-holes get created
+We will continue training but cap the number of line clears to see how well the agent
+performs with even more training. This will definitely limit the performance at some
+point, but then it'll mean that the agent will need to optimize instead of trying
+to blindly score.
 
-| | | | | |=|=| | | |
-| | | | | |=|=| | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | |X| | | | | | | |
-| |X|X|X|X|X|X|X| | |
-| |X|X|X|X|X|X|X| | |
-|X|X|X|X|X|X|X|X|X| |
-===============================================================
-Move / States
-[-5, 15, 0]
-| | | | | | |=|=| | |
-| | | | | |=|=| | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-|X|X| | | | | | | | |
-|X|X|X| | | | | | | |
-| |X|X|X|X|X|X|X| | |
-| |X|X|X|X|X|X|X| | |
-|X|X|X|X|X|X|X|X|X| |
+## Capping The game
 
-And then this causes problems
+After capping the game at 300 lines, we observe that during non-exploratory training, the
+performance tends to increase before sharply dropping and increasing again.
 
-| | | | | |=|=|=|=| |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-|X|X| | | | | | | | |
-| |X|X| | | | | | | |
-|X|X|X| | | | | | | |
-|X|X|X|X| | |X|X|X| |
-|X|X|X|X| |X|X|X|X| |
-|X|X|X|X| |X|X|X| | |
-|X|X|X|X|X|X|X|X|X| |
-|X|X|X|X|X|X|X|X|X| |
-| |X|X|X|X| |X|X|X| |
-|X|X|X|X|X|X|X|X|X| |
-|X|X|X|X|X|X|X|X|X| |
-| |X|X|X|X|X|X|X|X| |
-| |X|X|X|X|X|X|X| | |
-|X|X|X|X|X|X|X|X|X| |
-===============================================================
-Move / States
-[2, 18, -1]
-| | | | | |=|=|=| | |
-| | | | | | |=| | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-| | | | | | | | | | |
-|X|X| | | | | | | | |
-| |X|X| | | | | | | |
-|X|X|X| | | | | | | |
-|X|X|X|X| | |X|X|X| |
-|X|X|X|X| |X|X|X|X| |
-|X|X|X|X| |X|X|X| | |
-|X|X|X|X|X|X|X|X|X| |
-|X|X|X|X|X|X|X|X|X| |
-| |X|X|X|X| |X|X|X| |
-|X|X|X|X|X|X|X|X|X| |
-| |X|X|X|X|X|X|X|X|X|
-| |X|X|X|X|X|X|X| |X|
+> 2100 games               2300 games               2450 games               2600 games
+> =====================    =====================    =====================    =====================
+> | | | | | |=|=|=| | |    | | | | | | |X| | | |    | | | | | |=|=|=| | |    | | | | | | | | |X| |
+> | | | | | |=|X|X| | |    | | | | | |X|X|X|X| |    | | | | | | |=| | | |    | | | | | | | |X|X| |
+> | | | | | |X|X|X|X| |    | | |X|X| |X|X|X|X|X|    | | | | | |X|X|X|X| |    | | | | | |X|X|X|X| |
+> | | | |X|X|X|X|X|X| |    | | |X|X|X| |X|X|X|X|    | | |X|X|X|X|X|X|X| |    | | | |X|X|X|X|X|X| |
+> | |X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X| | | |    | |X|X|X|X|X|X|X|X| |    |X|X| |X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X| |X|X|    | |X|X|X| | | | | | |    | |X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> | |X|X|X|X|X|X|X|X|X|    | | | |X| | | | | | |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X| |X|X|X|X|X|X|    | | | |X|X| | | | | |    | |X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X| |X|X|X|X|X|X|    | | | |X|X| | | | | |    |X|X|X|X|X|X|X| |X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X| |X|X|X|X|X|X|    | | | | |X|X| | | | |    |X| |X|X|X|X|X|X|X| |    |X|X|X|X|X| |X|X| | |
+> | |X|X|X|X|X|X|X|X|X|    | | | | | |X|X| | | |    |X|X|X|X|X| |X|X|X|X|    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X| |X|X|X|X|    | | | | | | |X|X| | |    |X|X|X|X| |X|X|X|X|X|    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X| |X|    | |X| | | | |X|X| | |    |X|X|X|X| |X|X|X|X|X|    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    | |X| | | | | |X|X| |    |X|X|X|X|X|X|X|X| |X|    |X|X|X|X|X|X|X|X|X| |
+> |X| |X|X|X|X|X|X|X|X|    |X|X|X| | | | | |X|X|    | |X|X|X|X|X|X|X|X|X|    |X|X|X|X|X|X|X|X|X| |
+> |X| | |X|X|X|X|X|X|X|    |X|X| | | | | | |X| |    |X|X|X| |X|X|X|X|X|X|    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X| |X|X|X|X|X|    | |X|X| | | | | |X|X|    |X|X|X|X|X|X|X| |X|X|    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X| |X|X|    |X|X| |X|X|X|X|X|X|X|    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X| |X|X|X|X|X|X|X|X|    | |X|X|X|X|X|X|X|X|X|    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X| |X|X|X| |
+> | |X|X|X|X|X|X|X|X|X|    | |X|X|X|X| |X|X|X|X|    |X|X|X|X|X|X|X|X|X| |    | |X|X|X|X|X|X|X|X| |
+> =====================    =====================    =====================    =====================
 
-Test 1:
-If there is a hole, reward = 0
+There is a sudden drop in performance at around 2250 games, before the agent starts playing weirdly
+at 2300 games. Although the performance drops again after 2500 games, the sample game from 2600
+episodes demonstrates what the agent can be capable of.
 
-Test 2:
-If it creates a hole, reward = -1
+Due to a mistake in the code, the agent was stopped only if it reached exactly 300 lines. This
+may cause some difference in training than intended (and we will train again to make sure).
+
+During training, it seems that the agent improves steadily, before experiencing a sharp drop before 
+rising again. The overall strategy employed is not guaranteed to be perfect even with high scores.
+
+The rise / drop during training seems to occur every 400-500 episodes.
+
+The current 'best' agent to be used is taken at 2700 episodes. The agent stacks pretty well, 
+lasting past 300 lines easily. The agent tends to score somewhat efficiently, where half of the 
+line clears are not single lines. The agent doesn't perfectly keep
+a right well, although it is able to dig itself out (slowly) from any board state that it creates.
+
+The main thing to 
+
+Sample Game Scores:
+> Score: 368640
+09:02:14,608 root INFO Lines cleared: 300
+09:02:14,608 root INFO ===============================================================
+09:02:14,608 root INFO Lines cleared: 
+09:02:14,608 root INFO Single: 172
+09:02:14,609 root INFO Double: 40
+09:02:14,609 root INFO Triple: 8
+09:02:14,609 root INFO Tetris: 6
 
 # Changelog
 
@@ -884,7 +641,7 @@ If it creates a hole, reward = -1
 > Normalizing would help to standardize the features, especially since some grow large. 0 to 1 
 > normalization would be done.
 
-# Pending Changes
+1/9/21
 
 1. Implement tucks and spins
 > Tucks and spins are added to make the agent play better. These moves only occur when the piece
@@ -896,6 +653,16 @@ If it creates a hole, reward = -1
 > Updated the notebook with the current code. The notebook does not rely on external scripts, and
 > code will need to be ported over without referencing other local scripts or config. Verified on
 > Colab.
+
+3. Changed features and rewards
+> Changed features and rewards as per the rough notes, in order to experiment and play around to
+> get a better performing agent.
+
+4. Add some plots for training
+> Added some simple graph plots of the data to visualize lines cleared, rewards and score.
+
+# Pending Changes
+
 
 ## Stuff to Implement
 
@@ -912,3 +679,6 @@ If it creates a hole, reward = -1
 
 4. Plot the training statistics or use Tensorboard
 > Maybe we can figure out Tensorboard.
+
+5. Save training so that we can stop and restart again
+> Save the experience buffer and have a way to load it, by setting an option in the config.

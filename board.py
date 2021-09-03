@@ -51,7 +51,6 @@ class Board:
     self.piece = self.create_piece()
     self.piece_next = self.create_piece()
 
-    # NOTE: test 2
     self.holes = 0
 
   def generate_bag(self):
@@ -92,7 +91,7 @@ class Board:
     # place the piece in the middle of the board
     self.piece.move(int(self.width / 2), 0 - constants.PIECE_Y_OFFSET_INITIAL[self.piece.get_id()], 0)
 
-    if not self.update_board():
+    if not self.update_board() or self.line_clears >= 100:
       self.game_over = True
       return
 
@@ -444,7 +443,8 @@ class Board:
     bumpiness = self.get_state_bumpiness(simulated_pieces_table)
 
     # how many cells have an empty cell below
-    holes = self.get_state_holes(simulated_pieces_table)
+    #holes = self.get_state_holes(simulated_pieces_table)
+    holes, holes_created = self.get_state_hole_features(simulated_pieces_table)
 
     # how many columns are empty
     #wells = self.get_state_wells(simulated_pieces_table)
@@ -475,8 +475,8 @@ class Board:
 
     move[1] += hard_drop_value
 
-    return [board_height, bumpiness, holes, lines_cleared, \
-      row_transitions, lines_ready_to_clear, right_well]
+    return [board_height, bumpiness, holes, holes_created, \
+      lines_cleared, lines_ready_to_clear, row_transitions, col_transitions, right_well]
 
   def get_state_line_features(self, board, coords, hard_drop_value):
     """Returns the number of lines cleared when a piece is hard dropped, and the number
@@ -617,6 +617,21 @@ class Board:
           holes += 1
 
     return 1 - (holes / 100)
+
+  def get_state_hole_features(self, board):
+    """Returns the holes in the board, and the number of holes created by a move.
+    """
+    holes = 0
+
+    for i in range(self.width):
+      flag = False # presence of a cell that is filled
+      for j in range(self.height):
+        if board[j][i] != constants.PIECE_ID_EMPTY:
+          flag = True
+        elif flag:
+          holes += 1
+
+    return 1 - (holes / 100), 0.5 - ((holes - self.holes) / 8)
 
   def get_state_transitions(self, board):
     """Returns the row and column transitions.
@@ -778,7 +793,7 @@ class Board:
 
   def update_and_get_reward_holes(self):
     """Counts the number of holes in the board and updates it. Returns
-    -1 per hole created, or 5 per hole removed.
+    1 if a hole created, or 5 per hole removed.
     """
     holes = 0
     for i in range(self.width):
@@ -791,7 +806,8 @@ class Board:
           holes += 1
 
     diff = holes - self.holes
-    reward = 0 if (diff > 0) else diff * -5
+    reward = (diff * -5) + 5 if diff <= 0 else 0    
+
     self.holes = holes
 
     return reward

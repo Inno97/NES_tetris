@@ -35,7 +35,7 @@ LINES_PER_LEVEL = 10
 
 # reinforcement learning
 ACTION_SIZE = 13
-STATE_SIZE = 7
+STATE_SIZE = 9
 
 # Paths
 WEIGHT_PATH = os.path.join(os.path.dirname(__file__), 'weights\\' + \
