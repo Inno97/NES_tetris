@@ -57,9 +57,9 @@ class Network:
     If verbose, prints out a summary of the model created.
     """
     model =  tf.keras.models.Sequential([
-        tf.keras.layers.Dense(64, input_dim=self.state_size, activation='relu'),
+        tf.keras.layers.Dense(128, input_dim=self.state_size, activation='relu'),
+        tf.keras.layers.Dense(128, activation='relu'),
         tf.keras.layers.Dense(64, activation='relu'),
-        tf.keras.layers.Dense(32, activation='relu'),
         tf.keras.layers.Dense(1, activation='linear'),
     ])
 
@@ -120,7 +120,9 @@ class Network:
 
     for episode in range(episodes):
       obs = env.reset()
-      current_state = env.board.get_board_info([0, 0, 0], env.board.get_deep_copy_pieces_table())
+      move_metadata = []
+      move_metadata.append(0) # fit
+      current_state = env.board.get_board_info([0, 0, 0], env.board.get_deep_copy_pieces_table(), move_metadata)
 
       done = False
       total_reward = 0

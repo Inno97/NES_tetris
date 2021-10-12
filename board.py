@@ -1,5 +1,6 @@
 # the board contains the playing field
-import random, yaml, copy
+import random, yaml, copy, statistics
+from tensorflow.python.ops.gen_array_ops import const
 import constants, shape
 from piece import Piece
 from logger import get_logger
@@ -52,6 +53,9 @@ class Board:
     self.piece_next = self.create_piece()
 
     self.holes = 0
+    self.valleys = 0
+    self.right_well = 1
+    self.max_height_diff = 1
 
   def generate_bag(self):
     """Returns a List of Piece objects.
@@ -253,45 +257,7 @@ class Board:
   def generate_reward_system(self):
     """Returns a list of points given for line clears for the current level
     """
-    #return [0, (1 * self.level), (10 * self.level), (100 * self.level), (1000 * self.level)]
-    return [0, 10, 100, 1000, 10000]
-
-  def generate_state_info_board(self, new_coords, pieces_table_copy):
-    """Performs a hard drop (places the piece on the board as if it would just fall 
-    vertically only), then returns several things related to the new board.
-
-    Returns:
-      landing_height, the lowest point at which a piece will end up on the board.
-      hard_drop_value, the number of cells that a piece will end up dropping.
-      pieces_table_copy, the resulting board as a result of the piece being hard dropped.
-    """
-    # remove the piece
-    for coord in self.piece.get_coords():
-      pieces_table_copy[coord[0]][coord[1]] = constants.PIECE_ID_EMPTY
-
-    # try to do a hard drop
-    hard_drop_value = 0
-    for i in range(self.height):
-      is_valid = True
-      for coord in new_coords:
-        if coord[0] + hard_drop_value + 1 >= self.height or pieces_table_copy[coord[0] + \
-          hard_drop_value + 1][coord[1]] != constants.PIECE_ID_EMPTY:
-          is_valid = False
-          break
-
-      if is_valid:
-        hard_drop_value += 1
-      else:
-        break
-    
-    # update the coords
-    landing_height = self.height - 1
-    for coord in new_coords:
-      pieces_table_copy[coord[0] + hard_drop_value][coord[1]] = constants.PIECE_ID_CURRENT
-      landing_height = min(landing_height, coord[0] + hard_drop_value)
-
-    #self.render_given_board(pieces_table_copy)
-    return landing_height / 20, hard_drop_value, pieces_table_copy
+    return [0, 10, 100, 10000, 1000000]
 
   def render_board(self):
     """Prints out the entire board
@@ -325,6 +291,29 @@ class Board:
       
       log.info(line_to_print)
 
+  def render_move(self, piece, move, verbose=False):
+    """Prints out the board based off a move, to preview.
+    """
+    board = copy.deepcopy(self.pieces_table)
+
+    log.info('before')
+    # remove the original coordinates
+    for coord in piece.get_coords():
+      log.info(coord)
+      board[coord[0]][coord[1]] = constants.PIECE_ID_EMPTY
+
+    coords = piece.simulate_move(move[0], move[1], move[2])
+
+    if verbose:
+      piece.print_simulated_move(move[0], move[1], move[2])
+
+    log.info('after')
+
+    for coord in coords:
+      log.info(coord)
+      board[coord[0]][coord[1]] = piece.get_id()
+
+    self.render_given_board(board)
 
   def print_current_piece_state(self):
     self.piece.print_info()
@@ -409,85 +398,332 @@ class Board:
                           [4, 4, -2], [4, 4, 2], [5, 5, -2], [5, 5, 2], [6, 6, -2], [6, 6, 2], \
                             [1, 2, -3], [1, 2, 3], [2, 2, -3], [2, 2, 3], [3, 3, -3], [3, 3, 3], \
                               [4, 4, -3], [4, 4, 3], [5, 5, -3], [5, 5, 3], [6, 6, -3], [6, 6, 3], \
-                                [0, 1, 0], [0, 1, 1], [0, 1, -1], [0, 2, 2], [0, 2, -2], [0, 3, 3], [0, 3, -3]]
+                                [0, 1, 0], [0, 1, 1], [0, 1, -1], [0, 2, 2], [0, 2, -2], [0, 3, 3], [0, 3, -3], \
+                                  [-7, 7, 0], [-7, 7, 1], [-7, 7, -1], [7, 7, 0], [7, 7, 1], [7, 7, -1]]
     
-    legal_moves = []
+    legal_moves_priority_1 = []
+    legal_moves_priority_2 = []
+    legal_moves_priority_3 = []
+    legal_moves_priority_4 = []
+    legal_moves_priority_5 = []
+    legal_moves_priority_6 = []
+    legal_moves_tetris = []
 
     test_pieces_table = copy.deepcopy(self.pieces_table)
     for move in moves:
+      move_metadata = []
+      move_metadata.append(0) # fit
       if self.is_valid_move(self.piece, move, test_pieces_table, verbose=verbose):
         test_pieces_table = copy.deepcopy(self.pieces_table)
-        legal_moves.append([move, self.get_board_info(move, test_pieces_table, verbose=verbose)])
+        move_to_append = [move, self.get_board_info(move, test_pieces_table, move_metadata, verbose=verbose)]
 
-        # tuck / spin
+        feature_lines_cleared = move_to_append[1][0]
+        feature_lines_ready_to_clear = move_to_append[1][1]
+        feature_board_height = move_to_append[1][2]
+        feature_height_below_median_height = move_to_append[1][3]
+        feature_fit = move_to_append[1][4]
+        feature_pieces_fittable = move_to_append[1][5]
+        feature_bumpiness = move_to_append[1][6]
+        feature_valleys = move_to_append[1][7]
+        feature_valley_depth = move_to_append[1][8]
+        feature_max_height_diff = move_to_append[1][9]
+        feature_holes = move_to_append[1][10]
+        feature_holes_created = move_to_append[1][11]
+        feature_holes_covered = move_to_append[1][12]
+        feature_row_transitions = move_to_append[1][13]
+        feature_column_transitions = move_to_append[1][14]
+        feature_right_well = move_to_append[1][15]
+
+        # score Tetris
+        if feature_lines_cleared >= 1.0:
+          legal_moves_tetris.append(move_to_append)
+          break
+
+        elif self.piece.get_id() == 1 and feature_holes < 1.0:
+          if move == [4, 4, 1]:
+            legal_moves_priority_1.append(move_to_append)
+
+        # board high, scores lines and does not make holes
+        elif feature_board_height >= 0.5 and feature_lines_cleared > 0 and feature_holes_created >= 0.5 or\
+          feature_holes_created > 0.5:
+          legal_moves_priority_1.append(move_to_append)
+
+        # priority 6 - makes holes or next move makes holes
+        elif feature_holes_created < 0.5:
+        #elif (feature_holes_created < 0.5 or feature_fit < 0.1 or feature_valleys - self.valleys < 0) and\
+        #  feature_right_well - self.right_well <= 0:
+          legal_moves_priority_6.append(move_to_append)        
+
+        # priority 5 - makes holes, valleys, next move makes holes, and doesn't make use of the right well
+        elif (feature_valleys < self.valleys and feature_right_well == self.right_well) or \
+          (feature_fit < 0.1 and feature_right_well <= self.right_well) or feature_height_below_median_height <= 0.5:
+        #elif (feature_holes_created < 0.5 or feature_fit < 0.1 or feature_valleys - self.valleys < 0) and\
+        #  feature_right_well - self.right_well <= 0:
+          legal_moves_priority_5.append(move_to_append)
+
+        ## priority 4 - covers holes without clearing lines
+        #elif feature_holes_covered < 1.0 and feature_lines_cleared == 0.0:
+        ##elif feature_holes_covered < 1.0 and feature_lines_cleared == 0.0 or feature_holes_created < 0.5:
+        #  legal_moves_priority_4.append(move_to_append)
+
+        # priority 3 - doesn't maintain right well or makes too high of a difference in height
+        elif (feature_right_well < self.right_well and feature_holes_created == 0.5) or feature_max_height_diff < 0.6:
+        #elif (feature_right_well - self.right_well < 0 and feature_holes_created == 0.5) or\
+        #  (feature_board_height <= 0.35 and feature_holes_created == 0.5 and feature_lines_cleared != 0.0) or\
+        #    feature_max_height_diff < 0.6:
+          legal_moves_priority_3.append(move_to_append)
+
+        # priority 2 - doesn't clear holes or board is high and doesn't clear lines
+        elif (feature_holes_created == 0.5 and feature_board_height <= 0.35) or \
+          (feature_board_height > 0.35 and feature_lines_cleared == 0.0):
+          legal_moves_priority_2.append(move_to_append)
+
+        # priority 1 - everything else
+        else:
+          legal_moves_priority_1.append(move_to_append)
+          
+        # generate tucks / spins
         for tuck_or_spin in self.generate_tucks_and_spins(move, test_pieces_table, verbose=verbose):
-          legal_moves.append([tuck_or_spin, self.get_board_info(tuck_or_spin, copy.deepcopy(self.pieces_table), verbose=verbose)])
+          tuck_or_spin_metadata = []
+          tuck_or_spin_metadata.append(0) # fit
+          tuck_or_spin_to_append = [tuck_or_spin, self.get_board_info(tuck_or_spin, \
+            copy.deepcopy(self.pieces_table), tuck_or_spin_metadata, verbose=verbose)]
 
-    return legal_moves
+          feature_lines_cleared = tuck_or_spin_to_append[1][0]
+          feature_lines_ready_to_clear = tuck_or_spin_to_append[1][1]
+          feature_board_height = tuck_or_spin_to_append[1][2]
+          feature_height_below_median_height = tuck_or_spin_to_append[1][3]
+          feature_fit = tuck_or_spin_to_append[1][4]
+          feature_pieces_fittable = tuck_or_spin_to_append[1][5]
+          feature_bumpiness = tuck_or_spin_to_append[1][6]
+          feature_valleys = tuck_or_spin_to_append[1][7]
+          feature_valley_depth = tuck_or_spin_to_append[1][8]
+          feature_max_height_diff = tuck_or_spin_to_append[1][9]
+          feature_holes = tuck_or_spin_to_append[1][10]
+          feature_holes_created = tuck_or_spin_to_append[1][11]
+          feature_holes_covered = tuck_or_spin_to_append[1][12]
+          feature_row_transitions = tuck_or_spin_to_append[1][13]
+          feature_column_transitions = tuck_or_spin_to_append[1][14]
+          feature_right_well = tuck_or_spin_to_append[1][15]
 
-  def get_board_info(self, move, pieces_table_copy, verbose=False):
-    """Returns the state info of the board, to be passed into the agent
+          # score Tetris
+          if feature_lines_cleared >= 1.0:
+            legal_moves_tetris.append(tuck_or_spin_to_append)
+            break
+          
+          # board high, scores lines and does not make holes
+          elif feature_board_height >= 0.5 and feature_lines_cleared > 0 and feature_holes_created >= 0.5 or\
+            feature_holes_created > 0.5:
+            legal_moves_priority_1.append(tuck_or_spin_to_append)
+
+          # priority 6 - makes holes or next move makes holes
+          elif feature_holes_created < 0.5:
+          #elif (feature_holes_created < 0.5 or feature_fit < 0.1 or feature_valleys - self.valleys < 0) and\
+          #  feature_right_well - self.right_well <= 0:
+            legal_moves_priority_6.append(tuck_or_spin_to_append)        
+
+          # priority 5 - makes holes, valleys, next move makes holes, and doesn't make use of the right well
+          elif (feature_valleys < self.valleys and feature_right_well == self.right_well) or \
+            (feature_fit < 0.1 and feature_right_well <= self.right_well) or feature_height_below_median_height <= 0.5:
+          #elif (feature_valleys < self.valleys or feature_fit < 0.1) and feature_right_well <= self.right_well or\
+          #  feature_height_below_median_height <= 0.5:
+            legal_moves_priority_5.append(tuck_or_spin_to_append)
+
+          ## priority 4 - covers holes without clearing lines
+          #elif feature_holes_covered < 1.0 and feature_lines_cleared == 0.0:
+          ##elif feature_holes_covered < 1.0 and feature_lines_cleared == 0.0 or feature_holes_created < 0.5:
+          #  legal_moves_priority_4.append(tuck_or_spin_to_append)
+
+          # priority 3 - doesn't maintain right well or makes too high of a difference in height
+          elif (feature_right_well < self.right_well and feature_holes_created == 0.5) or feature_max_height_diff < 0.6:
+          #elif (feature_right_well - self.right_well < 0 and feature_holes_created == 0.5) or\
+          #  (feature_board_height <= 0.35 and feature_holes_created == 0.5 and feature_lines_cleared != 0.0) or\
+          #    feature_max_height_diff < 0.6:
+            legal_moves_priority_3.append(tuck_or_spin_to_append)
+
+          # priority 2 - doesn't clear holes or board is high and doesn't clear lines
+          elif (feature_holes_created == 0.5 and feature_board_height <= 0.35) or \
+            (feature_board_height > 0.35 and feature_lines_cleared == 0.0):
+            legal_moves_priority_2.append(tuck_or_spin_to_append)
+
+          # priority 1 - everything else
+          else:
+            legal_moves_priority_1.append(tuck_or_spin_to_append)
+            
+    # select the pool of moves based on priority
+    if len(legal_moves_tetris) > 0:
+      #log.info('Tetris move')
+      return legal_moves_tetris
+    elif len(legal_moves_priority_1) > 0:
+      #log.info('move priority 1')
+      return legal_moves_priority_1
+    elif len(legal_moves_priority_2) > 0:
+      #log.info('move priority 2')
+      return legal_moves_priority_2
+    elif len(legal_moves_priority_3) > 0:
+      #log.info('move priority 3')
+      return legal_moves_priority_3
+    elif len(legal_moves_priority_4) > 0:
+      #log.info('move priority 4')
+      return legal_moves_priority_4
+    elif len(legal_moves_priority_5) > 0:
+      #log.info('move priority 5')
+      return legal_moves_priority_5
+    else:
+      #log.info('move priority 6')
+      return legal_moves_priority_6
+      
+    '''
+    # uncomment when running main
+    if len(legal_moves_tetris) > 0:
+      log.info('Tetris move')
+      return legal_moves_tetris
+    elif len(legal_moves_priority_1) > 0:
+      log.info('move priority 1')
+      return legal_moves_priority_1
+    elif len(legal_moves_priority_2) > 0:
+      log.info('move priority 2')
+      return legal_moves_priority_2
+    elif len(legal_moves_priority_3) > 0:
+      log.info('move priority 3')
+      return legal_moves_priority_3
+    elif len(legal_moves_priority_4) > 0:
+      log.info('move priority 4')
+      return legal_moves_priority_4
+    elif len(legal_moves_priority_5) > 0:
+      log.info('move priority 5')
+      return legal_moves_priority_5
+    else:
+      log.info('move priority 6')
+      return legal_moves_priority_6
+    '''
+
+  def get_board_info(self, move, pieces_table_copy, move_metadata, verbose=False):
+    """Returns the state info of the board, to be passed into the agent, as a List of 
+    features.
+
     More state info can be given to the agent if needed.
 
-    NOTE: The piece is moved and then hard dropped to evaluate how good the move may be.
+    NOTE: For feature extraction, the piece is moved, hard dropped and then lines are cleared
+    (if possible) before extraction. Methods should return more than 1 feature or even other
+    things such as the board itself, to cut down on loops.
     """
     # get the new board state
     coords = self.piece.simulate_move(move[0], move[1], move[2]) # the new coords
-    landing_height, hard_drop_value, simulated_pieces_table = \
-      self.generate_state_info_board(coords, pieces_table_copy)
 
-    # the average height of columns with a piece
-    board_height = self.get_state_board_height(simulated_pieces_table)
+    # get the new board
+    feature_landing_height, hard_drop_value, simulated_pieces_table = \
+      self.generate_board_with_move(coords, pieces_table_copy)
 
-    # the sum of differences between heights of a column and its adjacent columns
-    bumpiness = self.get_state_bumpiness(simulated_pieces_table)
+    # features related to lines
+    feature_lines_cleared, feature_lines_ready_to_clear, simulated_pieces_table = \
+      self.get_features_line(simulated_pieces_table, coords, hard_drop_value)
 
-    # how many cells have an empty cell below
-    #holes = self.get_state_holes(simulated_pieces_table)
-    holes, holes_created = self.get_state_hole_features(simulated_pieces_table)
+    # features related to differences in height
+    # NOTE: these 2 methods could be merged eventually
+    feature_board_height, feature_fit, feature_pieces_fittable, feature_height_below_median_height = \
+      self.get_features_height(simulated_pieces_table)      
+    move_metadata[0] = feature_fit
 
-    # how many columns are empty
-    #wells = self.get_state_wells(simulated_pieces_table)
+    feature_bumpiness, feature_valleys, feature_valley_depth, feature_max_height_diff = \
+      self.get_features_height_diff(simulated_pieces_table)
 
-    # how many lines will be cleared by the move
-    lines_cleared, lines_ready_to_clear = self.get_state_line_features(simulated_pieces_table, coords, hard_drop_value)
+    # features related to holes
+    feature_holes, feature_holes_created, feature_overhang, feature_holes_covered = \
+      self.get_features_holes(simulated_pieces_table, coords)
 
-    # how many empty / filled cells are adjacent to a filled / empty cell on the same row
-    row_transitions, col_transitions = self.get_state_transitions(simulated_pieces_table)
+    # features related to transitions
+    feature_row_transitions, feature_column_transitions = self.get_features_transitions(simulated_pieces_table)
 
-    # proportion of pieces on the left of the board
-    #proportion_left = self.get_proportion_left_side(simulated_pieces_table)
-
-    # if a right well is present
-    right_well = self.get_right_well(simulated_pieces_table)
+    # features related to right well
+    feature_right_well = self.get_features_right_well(simulated_pieces_table)
 
     if verbose:
-      #log.info(' * landing_height:             ' + str(landing_height))
-      #log.info(' * board_height:               ' + str(board_height))
-      log.info(' * bumpiness:                  ' + str(bumpiness))
-      log.info(' * holes:                      ' + str(holes))
-      log.info(' * lines_cleared:              ' + str(lines_cleared))
-      log.info(' * row_transitions:            ' + str(row_transitions))
-      log.info(' * lines_ready_to_clear:       ' + str(lines_ready_to_clear))
-      #log.info(' * col_transitions:            ' + str(col_transitions))
-      #log.info(' * proportion_left:            ' + str(proportion_left))
-      log.info(' * right_well:                 ' + str(right_well))
+      log.info(' * lines_cleared               : '+ feature_lines_cleared)
+      log.info(' * lines_ready_to_clear        : '+ feature_lines_ready_to_clear)
+      log.info(' * board_height                : '+ feature_board_height)
+      log.info(' * fit                         : '+ feature_fit)
+      log.info(' * pieces_fittable             : '+ feature_pieces_fittable)
+      log.info(' * bumpiness                   : '+ feature_bumpiness)
+      log.info(' * valleys                     : '+ feature_valleys)
+      log.info(' * valley_depth                : '+ feature_valley_depth)
+      log.info(' * max_height_diff             : '+ feature_max_height_diff)
+      log.info(' * holes                       : '+ feature_holes)
+      log.info(' * holes_created               : '+ feature_holes_created)
+      log.info(' * holes_covered               : '+ feature_holes_covered)
+      log.info(' * row_transitions             : '+ feature_row_transitions)
+      log.info(' * column_transitions          : '+ feature_column_transitions)
+      log.info(' * right_well                  : '+ feature_right_well)
 
+    # add in the hard drop to the actual move
     move[1] += hard_drop_value
 
-    return [board_height, bumpiness, holes, holes_created, \
-      lines_cleared, lines_ready_to_clear, row_transitions, col_transitions, right_well]
+    return [feature_lines_cleared, feature_lines_ready_to_clear, feature_board_height, \
+      feature_height_below_median_height, feature_fit, feature_pieces_fittable, feature_bumpiness, \
+        feature_valleys, feature_valley_depth, feature_max_height_diff, feature_holes, \
+        feature_holes_created, feature_holes_covered, feature_row_transitions, feature_column_transitions, \
+          feature_right_well]
 
-  def get_state_line_features(self, board, coords, hard_drop_value):
-    """Returns the number of lines cleared when a piece is hard dropped, and the number
-    of lines that are ready to clear (columns 0 to 8 are filled but 9 isn't).
+    '''
+    return [feature_board_height, feature_bumpiness, feature_valleys, feature_holes, feature_holes_created, \
+      feature_lines_cleared, feature_lines_ready_to_clear, feature_row_transitions, feature_column_transitions, feature_right_well,\
+        feature_holes_covered, feature_fit, feature_valley_depth, feature_pieces_fittable, feature_max_height_diff]
+    '''
 
-    The agent should want to clear lines with a move.
+  def generate_board_with_move(self, new_coords, board):
+    """Performs a hard drop (places the piece on the board as if it would just fall 
+    vertically only), then returns several features related to the new board and the
+    new board itself.
 
     Args:
-      board (Array): The 2D Array of the board.
+      new_coords (List): The coordinates of the Piece as a Lists of Lists of (X, Y) 
+      for each cell that it occupies.
+      board (Array): The 2D Array of the temporary board.
+    Returns:
+      landing_height (float): The normalized lowest point at which a piece will end up on the 
+      board (from a height of 0 to 20).
+      hard_drop_value (int): The number of cells that a piece will end up dropping.
+      board (Array): The resulting board as a result of the piece being hard dropped.
+    """
+    # remove the piece
+    for coord in self.piece.get_coords():
+      board[coord[0]][coord[1]] = constants.PIECE_ID_EMPTY
+
+    # try to do a hard drop
+    hard_drop_value = 0
+    for i in range(self.height):
+      is_valid = True
+      for coord in new_coords:
+        if coord[0] + hard_drop_value + 1 >= self.height or board[coord[0] + \
+          hard_drop_value + 1][coord[1]] != constants.PIECE_ID_EMPTY:
+          is_valid = False
+          break
+
+      if is_valid:
+        hard_drop_value += 1
+      else:
+        break
+
+    # update the coords
+    landing_height = self.height - 1
+    for coord in new_coords:
+      board[coord[0] + hard_drop_value][coord[1]] = constants.PIECE_ID_CURRENT
+      landing_height = min(landing_height, coord[0] + hard_drop_value)
+
+    return landing_height / 20, hard_drop_value, board
+
+  def get_features_line(self, board, coords, hard_drop_value):
+    """Returns features that are related to line clears, and clears lines if necessary in the 
+    temporary board.
+
+    Args:
+      board (Array): The 2D Array of the temporary board.
       coords (List of Tuples): The List of Tuples of (y, x) coordinates.
       hard_drop_value (int): The number of spaces that a piece hard drops.
+    Returns:
+      feature_lines_to_clear (float): The number of lines cleared (from 0 to 4 lines).
+      feature_lines_ready_to_clear (float): The number of lines that are filled except the 
+      rightmost column (from 0 to 3 lines).
     """
     lines_to_clear = set() # keep track of previous lines to not double-count
     lines_ready_to_clear = set()
@@ -516,127 +752,314 @@ class Board:
           lines_ready_to_clear.add(coord[0])
         lines_checked.append(coord[0])
 
-    return len(lines_to_clear) / 4, len(lines_ready_to_clear) / 3
+    # clear the simulated tables
+    lines_to_clear_list = list(lines_to_clear).reverse()
+    if lines_to_clear_list is not None and lines_to_clear_list(lines_to_clear) > 0:
+      for line in lines_to_clear_list:
+        board.pop(line)
 
-  def get_state_wells(self, board):
-    """Returns how many wells there are in the board.
+      for i in range(len(lines_to_clear_list)):
+        board.insert(0, [0 for i in range(self.width)])
+
+    return len(lines_to_clear) / 4, len(lines_ready_to_clear) / 3, board
+
+  def get_features_height(self, board):
+    """Returns features that are related to board height.
+    
+    Args:
+      board (Array): The 2D Array of the temporary board.
+    Returns:
+      feature_board_height (float): The average height of all filled columns (from a height of 0
+      to 20).
+      feature_fit (float): The number of columns that the piece can fit in (from 0 to 10).
+      feature_pieces_fittable (float): The number of unique pieces that can fit on the board (from
+      0 to 7).
+      feature_height_below_median_height (float): The sum of squared height difference between 
+      all columns that are lower than the median column height (from 0 to 20 per column).
     """
-    wells = 0
-    for i in range(len(board[0])): # column
-      is_well = True
-      for j in range(len(board)): # row
+    # self.piece_next
+    empty_columns = 0
+    total_height = 0
+    prev_height = 0      # needed for O
+    prev_prev_height = 0 # needed for T, S, Z pieces
+    fit = 0
+
+    height_below_median_height = 0
+    
+    o_piece_fittable = False
+    t_piece_fittable = False
+    s_piece_fittable = False
+    z_piece_fittable = False
+    j_piece_fittable = False
+    l_piece_fittable = False
+
+    id = self.piece_next.get_id()
+
+    column_height_list = []
+
+    for i in range(self.width): # column
+      height = 0
+      for j in range(self.height): # row
         if board[j][i] != constants.PIECE_ID_EMPTY:
-          is_well = False
+          height = j
           break
-
-      if is_well:
-        wells += 1
-
-    return wells
-
-  def get_state_board_height(self, board):
-    """Returns the average height of all non-empty columns.
-    """
-    try:
-      empty_columns = 0
-      total_height = 0
-
-      for i in range(self.width): # column
-        height = 0
-        for j in range(self.height): # row
-          if board[j][i] != constants.PIECE_ID_EMPTY:
-            height = j
-            break
+      
+      if i != self.width - 1:
         if height == 0:
           empty_columns += 1
         else:
           total_height += (self.height - height)
 
-      return (total_height / (self.width - empty_columns) / 20)
-    except ZeroDivisionError:
-      return 0
+      # check if all unique pieces can fit
+      if i != 0:
+        
+        # I piece
+        if id == 1: 
+          fit += 1
 
-  def get_state_board_height_features(self, board):
-    """Returns several height related features from a board.
+        # O piece
+        if prev_height == height:
+          if id == 2:
+            fit += 1
+          o_piece_fittable = True
 
+        # T piece
+        if (prev_prev_height == prev_height and prev_height == height) or \
+          (prev_prev_height == height and prev_prev_height != prev_height):
+          if id == 3: 
+            fit += 1
+          t_piece_fittable = True
+      
+        # S piece
+        if (prev_prev_height == prev_height and prev_height - height == -1) or\
+          (prev_prev_height - prev_height == 1) or (prev_height - height == 1):
+          if id == 4:
+            fit += 1
+          s_piece_fittable = True
+
+        # Z piece
+        if (prev_prev_height - prev_height == 1 and prev_height == height) or\
+          (prev_prev_height - prev_height == -1) or (prev_height - height == -1):
+          if id == 5: 
+            fit += 1
+          z_piece_fittable = True
+
+        # J piece
+        if (prev_prev_height == prev_height or prev_height == height) or\
+          (prev_prev_height - prev_height == -2 or prev_height - height == -2):
+          if id == 6: 
+            fit += 1
+          j_piece_fittable = True
+
+        # L piece
+        if (prev_prev_height == prev_height or prev_height == height) or\
+          (prev_prev_height - prev_height == 2 or prev_height - height == 2):
+          if id == 7:
+            fit += 1
+          l_piece_fittable = True
+
+      prev_prev_height = prev_height
+      prev_height = height
+
+      column_height_list.append(height)
+      
+    pieces_fittable = 0
+    if o_piece_fittable: 
+      pieces_fittable += 1
+    if t_piece_fittable: 
+      pieces_fittable += 1
+    if s_piece_fittable: 
+      pieces_fittable += 1
+    if z_piece_fittable: 
+      pieces_fittable += 1
+    if j_piece_fittable: 
+      pieces_fittable += 1
+    if l_piece_fittable: 
+      pieces_fittable += 1
+
+    # exclude the rightmost column for median height
+    column_height_list.pop(len(column_height_list) - 1)
+    median_col_height = int(statistics.median(column_height_list))
+
+    median_col_height_upper_limit = 0
+
+    for column_height in column_height_list:
+      if column_height < median_col_height:
+        height_below_median_height += (median_col_height - column_height) * \
+          (median_col_height - column_height)
+        median_col_height_upper_limit += 20
+
+    if median_col_height_upper_limit == 0:
+      median_col_height_upper_limit = 1
+          
+    # if the board is empty
+    if self.width - empty_columns == 0:
+      return 0.0, fit / 9, pieces_fittable / 6, max(1.0 - height_below_median_height / \
+        median_col_height_upper_limit, 0.0)
+    else:
+      return total_height / (self.width - empty_columns) / 20, fit / 9, pieces_fittable / 6, \
+        max(1.0 - height_below_median_height / median_col_height_upper_limit, 0.0)
+
+  def get_features_height_diff(self, board):
+    """Returns features that are related to differences in height.
+    
+    Features returned are the average of all columns with cells, rather than the entire board.
+    The rightmost column is not considered as it is used as a well.
+    
+    Args:
+      board (Array): The 2D Array of the temporary board.
     Returns:
-      Average board height of filled columns.
-      Max height of all filled columns.
+      feature_bumpiness (float): The average absolute height difference between all filled columns
+      (from height of 0 to 20).
+      feature_valleys (float): The number of valleys (columns that are 3 or more pieces lower than
+      its adjacent columns) dividied by the filled columns.
+      feature_valley_depth (float): The average depth of all valleys (from a height of 0 to 20).
+      feature_max_height_diff (float): The maximum absolute difference in height of all columns
+      (from a height of 0 to 20).
     """
-    try:
-      empty_columns = 0
-      total_height = 0
+    filled_columns = 0
+    prev_height = 0
+    prev_prev_height = 0
 
-      max_height = 0
-
-      for i in range(len(board[0])): # column
-        height = 0
-        for j in range(len(board) - 1, 0, -1): # row
-          if board[j][i] != constants.PIECE_ID_EMPTY:
-            height = j
-            max_height = max(max_height, j)
-            break
-        if height == 0:
-          empty_columns += 1
-        else:
-          total_height += height
-
-      return total_height / (self.width - empty_columns), max_height
-    except ZeroDivisionError:
-      return 0, 0
-
-  # returns the sum total of differences between height of each column and its adjacent one
-  def get_state_bumpiness(self, board):
     bumpiness = 0
 
+    valleys = 0
+    valley_combined_depth = 0
+
+    max_column_height_diff = 0
+    max_height = 20
+    min_height = 0
+
     # iterate through each column
-    for i in range(self.width):
-      prev_height = 0
-      height = 0
-      for j in range(self.height):
-        if board[j][i] != constants.PIECE_ID_EMPTY: # get the first non-empty cell
-          height = j
-          if i != 0:
-            bumpiness += abs(height - prev_height)
-          prev_height = height
+    for i in range(self.width - 1):
+      height = 20
 
-          break
-      
-    return bumpiness / 190
-
-  # returns how many cells that have an empty cell below
-  def get_state_holes(self, board):
-    holes = 0
-
-    for i in range(self.width):
-      flag = False # presence of a cell that is filled
+      # get the height
       for j in range(self.height):
         if board[j][i] != constants.PIECE_ID_EMPTY:
-          flag = True
-        elif flag:
-          holes += 1
+          height = j
+          break
 
-    return 1 - (holes / 100)
+      bumpiness += abs(height - prev_height) * abs(height - prev_height)
 
-  def get_state_hole_features(self, board):
-    """Returns the holes in the board, and the number of holes created by a move.
+      #max_column_height_diff = max(max_column_height_diff, abs(height - prev_height))      
+
+      # determine valleys
+      if prev_height - prev_prev_height >= 3 and prev_height - height >= 3:
+        valleys += 1
+        valley_combined_depth += max(abs(height - prev_height), \
+          abs(prev_prev_height - prev_height))
+
+      if height < 20:
+        filled_columns += 1
+      prev_prev_height = prev_height
+      prev_height = height
+
+      max_height = min(max_height, height)
+      min_height = max(min_height, height)
+
+    max_column_height_diff = abs(max_height - min_height)
+
+    if filled_columns == 0:
+      return 1.0, 1.0, 1.0, 1.0
+    elif valleys != 0:
+      return 1 - bumpiness / (filled_columns * filled_columns * 20 * 20), 1 - valleys / filled_columns, \
+        1 - valley_combined_depth / (20 * valleys), 1 - max_column_height_diff / 20
+    else:
+      return 1 - bumpiness / (filled_columns * filled_columns * 20 * 20), 1.0, 1.0, \
+        1 - max_column_height_diff / 20
+
+  def get_features_holes(self, board, coords):
+    """Returns features that are related to holes.
+
+    Args:
+      board (Array): The 2D Array of the temporary board.
+      coords (List of Tuples): The List of Tuples of (y, x) coordinates.
+    Returns:
+      feature_holes (float): The number of holes per column with holes (from 0 to 20).
+      feature_holes_created (float): The net change of holes (from 4 to -4 holes created).
+      feature_overhang (float): The number of overhangs (filled cells above a hole) per
+      column with holes (from 0 to 20)
+      feature_holes_covered (float): The number of holes that are covered by the move (based
+      on the number of holes).
     """
     holes = 0
+    hole_columns = 0
+    overhang_total = 0
 
-    for i in range(self.width):
+    holes_in_piece_columns = 0
+
+    # get the columns that the piece coords are in
+    piece_coords_columns_set = set()
+    for coord in coords:
+      piece_coords_columns_set.add(coord[1])
+
+    for i in range(self.width - 1):
       flag = False # presence of a cell that is filled
+      overhang_count = 0
+      overhang_in_column = 0
+
+      holes_in_column = 0
+
       for j in range(self.height):
         if board[j][i] != constants.PIECE_ID_EMPTY:
           flag = True
+          overhang_count += 1
         elif flag:
-          holes += 1
+          holes_in_column += 1
+          overhang_in_column += overhang_count
+          overhang_count = 0
+      
+      overhang_total += overhang_in_column
 
-    return 1 - (holes / 100), 0.5 - ((holes - self.holes) / 8)
+      if i in piece_coords_columns_set:
+        holes_in_piece_columns += holes_in_column
 
-  def get_state_transitions(self, board):
-    """Returns the row and column transitions.
+      holes += holes_in_column
+      if holes_in_column > 0:
+        hole_columns += 1
 
-    Transitions are the sum of different cells adjacent to one another in row / col.
+    if holes == 0:
+      return 1.0, 0.5, 1.0, 1.0
+    elif self.holes == 0:
+      return 1.0 - holes / 20 * hole_columns, max(0.5 - 0.5 * holes / 4, 0), \
+        1.0 - overhang_total / (20 * hole_columns), 1.0 - holes_in_piece_columns / holes
+    else:
+      return 1.0 - holes / 20 * hole_columns, 0.5 - 0.5 * ((holes - self.holes) / self.holes), \
+        1.0 - overhang_total / (20 * hole_columns), 1.0 - holes_in_piece_columns / holes
+    
+    '''
+    if hole_columns == 0:
+      return 1.0, 0.5, 1.0, 1.0
+    elif self.holes != 0:
+      if holes != 0:
+        return 1.0 - holes / 20 * hole_columns, 0.5 - 0.5 * ((holes - self.holes) / self.holes), \
+          1.0 - overhang_total / hole_columns, 1.0 - holes_in_piece_columns / holes
+      else:
+        return 1.0 - holes / 20 * hole_columns, 0.5 - 0.5 * ((holes - self.holes) / self.holes), \
+          1.0, 1.0
+    else:
+      # makes holes
+      if holes != 0:
+        return 1.0 - holes / 20 * hole_columns, max(0.5 - 0.5 * holes, 0) , \
+          1 - overhang_total / holes, 1 - holes_in_piece_columns / holes
+      else:
+        return 1.0 - holes / 20 * hole_columns, max(0.5 - 0.5 * holes, 0) , \
+          1.0, 1.0
+    '''
+    
+  def get_features_transitions(self, board):
+    """Returns features that are related to transitions.
+
+    Transitions refer to a change from filled to not-filled and vice versa.
+    The rightmost column is not considered as it is used as a well.
+
+    Args:
+      board (Array): The 2D Array of the temporary board.
+    Returns:
+      feature_row_transitions (float): The number of transitions in each row (from 0 to 100).
+      feature_column_transitions (float): The number of transitions in each column (from 0
+      to 100).
     """
     row_transitions = 0
     col_transitions = 0
@@ -652,44 +1075,54 @@ class Board:
 
     return 1 - (row_transitions / 100), 1 - (col_transitions / 100)
 
-  def get_proportion_left_side(self, board):
-    """Returns the proportion of pieces that lie on the left side of the board.
+  def get_features_right_well(self, board):
+    """Returns features that are related to the right well.
 
-    Agent should try to stack on the left based on general player behavior.
+    The result of the right well is divided by the overhangs to further differentiate
+    based on the number of overhangs (which we try to avoid).
+
+    Args:
+      board (Array): The 2D Array of the temporary board.
+    Returns:
+      feature_right_well (float): The number of filled cells in the rightmost column
+      (from 0 to 20), divided by the number of overhangs.
     """
-    try:
-      count_left = 0
-      count_right = 0
+    # the number of filled cells over holes
+    count = 0
 
-      mid = int(self.width / 2)
+    # the number of filled sections of cells over holes
+    overhang_count = 0
+    overhang_flag = False
 
-      for i in range(0, mid, 1):
-        for j in range(self.height):
-          if board[j][i] != constants.PIECE_ID_EMPTY:
-            count_left += 1
-
-      for i in range(mid, self.width, 1):
-        for j in range(self.height):
-          if board[j][i] != constants.PIECE_ID_EMPTY:
-            count_right += 1
-
-      return count_left / (count_left + count_right)
-    except ZeroDivisionError:
-      return 0
-
-  def get_right_well(self, board):
-    """Returns the presence of a right well.
-
-    Agent should try to maintain a right well to make Tetrises.
-    """
     for i in range(self.height):
       if board[i][self.width - 1] != constants.PIECE_ID_EMPTY:
-        return 0
+        overhang_flag = True
+        count += 1
+      elif overhang_flag:
+        overhang_count += 1
+        overhang_flag = False
+    
+    if overhang_count == 0:
+      overhang_count = 1
 
-    return 1
+    return (1 - count / 20) / overhang_count
 
-  def generate_tucks_and_spins(self, move, pieces_table_copy, verbose=False):
+  def generate_tucks_and_spins(self, move, board, verbose=False):
     """Returns a List of moves corresponding to tucks and spins.
+
+    Tucks are moves that occur when the piece is moved left or right at the last moment,
+    while spins are the same, except the piece is rotated.
+
+    Tucks where the piece is moved while in mid-air are not considered due to computation time,
+    although they would certainly be useful at times.
+
+    Args:
+      move (tuple): A tuple of (x, y, rotation) representing the movement in x / y dimension
+      and the rotation of the piece.
+      board (Array): The 2D Array of the temporary board.
+      verbose (Boolean): Logs out the move generated, False by default.
+    Returns:
+      A List of legal moves that are either tucks or spins.
     """
     tuck_left = copy.deepcopy(move)
     tuck_right = copy.deepcopy(move)
@@ -704,14 +1137,167 @@ class Board:
     legal_moves = []
     tucks_or_spins = [tuck_left, tuck_right, spin_left, spin_right]
     for tuck_or_spin in tucks_or_spins:
-      if self.is_valid_move(self.piece, tuck_or_spin, pieces_table_copy, verbose=verbose):
+      if self.is_valid_move(self.piece, tuck_or_spin, board, verbose=verbose):
         legal_moves.append(tuck_or_spin)
         if verbose:
           log.info(tuck_or_spin)
 
     return legal_moves
 
-  # gets the current piece
+  # rewards and scores
+  def get_score_increase(self, lines_cleared):
+    return self.scoring_system[lines_cleared]
+
+  def get_reward_increase(self, lines_cleared):
+    return self.reward_system[lines_cleared]
+
+  def get_reward_increase_well(self):
+    return self.get_features_right_well(self.pieces_table)
+
+  def get_reward_holes(self):
+    for i in range(self.width):
+      flag = False # presence of a cell that is filled
+      for j in range(self.height):
+        if self.pieces_table[j][i] != constants.PIECE_ID_EMPTY and \
+          self.pieces_table[j][i] != constants.PIECE_ID_CURRENT:
+          flag = True
+        elif flag:
+          return -1
+    
+    return 1
+
+  def update_and_get_reward_holes(self):
+    """Counts the number of holes in the board and updates it. Returns
+    1 if a hole created, or 5 per hole removed.
+    """
+    right_well_count = 0
+    holes = 0
+    hole_columns = 0
+    overhang_total = 0
+
+    for i in range(self.width):
+      flag = False # presence of a cell that is filled
+      overhang_count = 0
+      overhang_in_column = 0
+      right_well_overhang_count = 0
+
+      right_well_overhang_flag = False
+
+      holes_in_column = 0
+
+      for j in range(self.height):
+        if self.pieces_table[j][i] != constants.PIECE_ID_EMPTY and \
+          self.pieces_table[j][i] != constants.PIECE_ID_CURRENT:
+          flag = True
+          overhang_count += 1
+
+          if i == self.width - 1:          
+            right_well_count += 1
+            right_well_overhang_flag = True
+        elif flag:
+          holes_in_column += 1
+          overhang_in_column += overhang_count
+          overhang_count = 0
+
+          if right_well_overhang_flag:
+            right_well_overhang_count += 1
+            right_well_overhang_flag = False
+
+      if right_well_overhang_count == 0:
+        right_well_overhang_count = 1
+
+      overhang_total += overhang_in_column
+
+      if i != self.width - 1:
+        holes += holes_in_column
+
+    holes_temp = self.holes
+    self.holes = holes
+
+    self.right_well = (1 - right_well_count / 20) / right_well_overhang_count
+    
+    if hole_columns == 0:
+      return 1.0
+    elif holes_temp != 0:
+      return 0.5 - 0.5 * ((holes - holes_temp) / holes_temp)
+    else:
+      return max(0.5 - 0.5 * holes / 4, 0)
+
+  def update_max_height_diff(self):
+    """Updates the max_height_diff of the board.
+    """
+    filled_columns = 0
+    prev_height = 0
+    prev_prev_height = 0
+
+    valleys = 0
+    valley_combined_depth = 0
+
+    max_column_height_diff = 0
+    max_height = 20
+    min_height = 0
+
+    # iterate through each column
+    for i in range(self.width - 1):
+      height = 20
+
+      # get the height
+      for j in range(self.height):
+        if self.pieces_table[j][i] != constants.PIECE_ID_EMPTY:
+          height = j
+          break
+
+      # determine valleys
+      if prev_height - prev_prev_height >= 3 and prev_height - height >= 3:
+        valleys += 1
+        valley_combined_depth += max(abs(height - prev_height), \
+          abs(prev_prev_height - prev_height))
+
+      if height < 20:
+        filled_columns += 1
+
+      prev_prev_height = prev_height
+      prev_height = height
+
+      max_height = min(max_height, height)
+      min_height = max(min_height, height)
+
+    max_column_height_diff = abs(max_height - min_height)
+
+    self.max_height_diff = 1 - max_column_height_diff / 20
+    
+    if filled_columns == 0:
+      self.valleys = 1.0
+    else:
+      self.valleys = 1 - valleys / filled_columns
+      
+  # return the number of lines that have been cleared in the most recent move
+  def get_lines_cleared_recently(self):
+    return self.lines_cleared_recently
+
+  def get_lines_ready_to_clear_recently(self):
+    """Returns the number of rows that are filled except for the last column in the board.
+    """
+    rows_to_check = [] # keep track of previous lines cleared to prevent double-count
+    rows_ready_to_clear = 0
+
+    # run through all coords of the current piece to get the lines to clear
+    for coord in self.piece.get_coords():
+      if coord[0] not in rows_to_check:
+        rows_to_check.append(coord[0])
+
+    for row in rows_to_check:
+      ready_flag = True
+      for j in range(self.width - 1):
+        if self.pieces_table[row][j] == constants.PIECE_ID_EMPTY:
+          ready_flag = False
+          break
+
+      if ready_flag and self.pieces_table[row][self.width - 1] == constants.PIECE_ID_EMPTY:
+        rows_ready_to_clear += 1
+
+    return rows_ready_to_clear
+
   def get_current_piece(self):
     return self.piece
 
@@ -742,75 +1328,19 @@ class Board:
   def get_score(self):
     return self.score
 
-  # return the number of lines that have been cleared in the most recent move
-  def get_lines_cleared_recently(self):
-    return self.lines_cleared_recently
-
-  def get_lines_ready_to_clear_recently(self):
-    """Returns the number of rows that are filled except for the last column in the board.
-    """
-    rows_to_check = [] # keep track of previous lines cleared to prevent double-count
-    rows_ready_to_clear = 0
-
-    # run through all coords of the current piece to get the lines to clear
-    for coord in self.piece.get_coords():
-      if coord[0] not in rows_to_check:
-        rows_to_check.append(coord[0])
-
-    for row in rows_to_check:
-      ready_flag = True
-      for j in range(self.width - 1):
-        if self.pieces_table[row][j] == constants.PIECE_ID_EMPTY:
-          ready_flag = False
-          break
-
-      if ready_flag and self.pieces_table[row][self.width - 1] == constants.PIECE_ID_EMPTY:
-        rows_ready_to_clear += 1
-
-    return rows_ready_to_clear
-
-  # returns increase in score from lines cleared
-  def get_score_increase(self, lines_cleared):
-    return self.scoring_system[lines_cleared]
-
-  def get_reward_increase(self, lines_cleared):
-    return self.reward_system[lines_cleared]
-
-  def get_reward_increase_well(self):
-    return self.get_right_well(self.pieces_table)
-
-  def get_reward_holes(self):
-    for i in range(self.width):
-      flag = False # presence of a cell that is filled
-      for j in range(self.height):
-        if self.pieces_table[j][i] != constants.PIECE_ID_EMPTY and \
-          self.pieces_table[j][i] != constants.PIECE_ID_CURRENT:
-          flag = True
-        elif flag:
-          return -1
-    
-    return 1
-
-  def update_and_get_reward_holes(self):
-    """Counts the number of holes in the board and updates it. Returns
-    1 if a hole created, or 5 per hole removed.
-    """
-    holes = 0
-    for i in range(self.width):
-      flag = False # presence of a cell that is filled
-      for j in range(self.height):
-        if self.pieces_table[j][i] != constants.PIECE_ID_EMPTY and \
-          self.pieces_table[j][i] != constants.PIECE_ID_CURRENT:
-          flag = True
-        elif flag and self.pieces_table[j][i] != constants.PIECE_ID_CURRENT:
-          holes += 1
-
-    diff = holes - self.holes
-    reward = (diff * -5) + 5 if diff <= 0 else 0    
-
-    self.holes = holes
-
-    return reward
-
   def get_deep_copy_pieces_table(self):
     return copy.deepcopy(self.pieces_table)
+
+  def set_board(self, board):
+    """Sets the board based from a 2D array of pieces.
+
+    Args:
+      board (Array): The board to set to.
+    """
+    self.pieces_table = board
+
+  def set_current_piece(self, piece_id):
+    self.piece = Piece(piece_id)
+
+  def set_next_piece(self, piece_id):
+    self.next_piece = Piece(piece_id)

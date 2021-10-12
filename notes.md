@@ -7,36 +7,76 @@ expected, and then it should start improving from there.
 The trend to observe in training would be of course, exponential improvement starting at around
 1500 episodes. Improvements will plateau off eventually.
 
-Expected training time would be around 4 to 5 hours.
-
 ## Current Progress
 
 Train agent / tune features -> Add on levels / delays -> Train agent
 
+## The Basics of the Agent
+
+The end goal is to produce an agent that stacks efficiently without dying. Hence, we select multiple
+features that encourage this.
+
+Through user testing, the game can be played efficiently without having too complex behavior.
+
+Generally, the agent should:
+
+1. Stack the board nicely to make Tetrises
+2. Clear Tetrises when possible
+3. Avoid making holes
+4. Clear holes if they are made
+
+This means that there are 2 categories of actions that the agent should perform. Being to stack 
+or clear. Thus, several features are used:
+
+1. board_height
+> The overall height of every filled column.
+> Ideally, this should not be too high as it will just be dangerous for the agent.
+
+2. bumpiness
+> The sum of absolute differences in height between adjacent columns, except for the rightmost one.
+> Ideally, this should be relatively low, as it means that the board isn't a haphazard mess and
+> pieces have the space to fit in.
+
+3. valleys
+> The number of columns where the absolute difference in height is more than 3, except for the 
+> rightmost.
+> Ideally, this should be 0, as the only piece that can fit into these is the I piece, if a
+> column has adjacent columns whose height is taller by 3. Even if it is only one side, it is better
+> to not have it, as it means that the board is bumpy.
+
+4. holes
+> The number of empty cells that have a filled cell above.
+> Ideally, this should be 0, as holes prevent Tetrises and are hard to clear.
+
+5. holes_created
+> The number of holes created by a move.
+> Ideally, this should be 0, as we should not be making more holes.
+
+6. lines_cleared
+> The number of lines cleared by a move.
+> Ideally, this should either be 0, or as high as possible (line efficiency).
+
+7. lines_ready_to_clear
+> The number of lines that are filled except the rightmost column, that are created by a move.
+> Ideally, this should be as high as possible, as the agent is stacking well to make Tetrises.
+
+8. row_transitions
+> 
+
+9. col_transitions
+> 
+
+10. right_well
+> 
+
+11. holes_covered
+> 
+
+
 ## Performance
 
-The agent performs decently, being able to clear around 50 lines on average.
 
-However, agent fails primarily due to it being unable to clear certain lines, and thus
-will slowly build up the board and top off eventually. Stacking ability is questionable
-as the agent tends to prefer to clear lines at the expense of board state.
-
-The board tends to have some holes, showing that the agent has some difficulty in stacking
-super efficiently. For some odd reason, the agent sometimes stacks a well on the left side.
-
-Example 'good' game:
-> Score: 71370
-> Lines cleared: 96
-> =========================
-> Lines cleared:
-> Single: 84
-> Double: 6
-> Triple: 0
-> Tetris: 0
-
-As can be seen, the agent tends to clear single lines instead of opting to make Tetrises.
-
-# Rough Notes
+# Notes
 
 ## The Original Agent
 
@@ -613,6 +653,244 @@ Sample Game Scores:
 09:02:14,609 root INFO Double: 40
 09:02:14,609 root INFO Triple: 8
 09:02:14,609 root INFO Tetris: 6
+
+## Explicit Moves and Stop Making Holes
+
+One thing that we can do, is to explicity make the agent perform certain moves (like making a 
+Tetris if possible). This can be extended to prevent the agent from making potentially stupid
+moves.
+
+In this way, the agent has several action groups that it can do:
+
+1. Stack but not touch the well
+2. Burn lines
+3. Tetris
+
+One other thing to do is to actively prevent the agent from making holes. While this is not ideal,
+moves generated can be separated into ones that make holes, and ones that don't. There are situations
+where holes have to be made, and we will thus use the group of moves that generate holes.
+
+During state generation for moves, they are split into 3 different groups (low / mid / high) of
+priorities, where the higher priority groups are used. The idea is to have some form of forced
+control over moves, to ensure that the agent does what it should do.
+
+We will now train agents based on this logic.
+
+2650 is good.
+
+Agent is capable of stacking efficiently, although it doesn't score the best (likes to score doubles 
+and triples). Agent can maintain a right well and clean up messy board states to a competent degree.
+
+Perhaps a more robust system could be put in place to prevent this.
+
+## Trying to Clear Holes Effectively
+
+Now that the agent can stack well, the next thing is to clear holes. The most important thing is to 
+clear holes once they are made, else the board will keep piling up and the hole will take more moves 
+to clear.
+
+And the hole-related features will be based on the filled columns instead of all.
+
+Hence, we introduce a new feature: 
+
+> Holes Covered - How many holes does a move end up affecting / adding on more cells
+
+The idea behind this is to try to clear the holes, or avoid adding on more filled cells as they 
+will only make the holes harder to clear.
+
+Another feature was explored:
+
+> Overhang Height - How many cells are filled above a hole.
+
+This feature calculates how many extra cells (across all holes) are filled.
+
+However, after testing, this seems to be rather problematic and is not used.
+
+## Giving Leeway to the Right Well
+
+> We now give some leeway to the right well and hole related features for the 
+rightmost column. The idea is to simulate the ability to use the right well
+as a temporary place for 'bad' moves so that we can burn off lines.
+
+In this way, we can potentially avoid disastrous moves by making holes in other columns
+(presumably well stacked).
+
+Below, we can see the effects of burning. Note that if the S piece was placed anywhere else, it would
+be rather problematic to clear, even for experienced players.
+
+> | | | | | | |=|=| | |    | | | | | |=|=|=|=| |    | | | | | |=|=|=| | |    | | | | | |=|=|=| | |
+> | | | | | |=|=| | | |    | | | | | | | | | | |    | | | | | | | |=| | |    | | | | | |=| | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | | | | | |X| | |    | | | | | | | | | | |
+> | | | | | | | | | | |    | | | | | | | | | | |    | | | |X| | | |X|X| |    | | | | | | | |X| | |
+> | | | | | | | | | | |    | | | | | | | | | | |    |X| | |X|X|X|X|X|X| |    | | | |X| | | |X|X| |
+> | | | | | | | | | | |    | | | | | | | | |X|X|    |X| | |X|X|X|X|X|X|X|    |X| | |X|X|X|X|X|X| |
+> | | | | | | | | | | |    | | | | | | | |X|X| |    |X| |X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> | | | | | |X|X|X|X| |    | | | | | |X|X|X|X| |    |X| |X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> | | | |X| |X|X|X|X| |    | | | |X| |X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> | | |X|X| |X|X|X|X| |    | | |X|X| |X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> | | |X|X|X|X|X|X|X| |    | | |X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+
+Issues:
+
+Generally tops off with a good board, as it does not clear enough lines on time
+
+Fails to burn and ends up with bad holes
+
+Makes too steep valleys and can't plug them with enough I pieces and clear lines
+
+> | | | | | |=|=| | | |
+> | | | | | |=|=| | | |
+> | | | | |X|X|X| | |X|
+> | | | | |X|X|X| |X|X|
+> | | |X|X|X|X|X| |X| |
+> | | |X|X|X|X|X| |X| |
+> | |X|X|X|X|X|X| |X| |
+> | |X|X|X|X|X|X|X|X| |
+> | |X|X|X|X|X|X|X|X| |
+> | |X|X|X|X|X|X|X|X| |
+> | |X|X|X|X|X|X|X|X| |
+> | |X|X|X|X|X|X|X|X| |
+> | |X|X|X|X|X|X|X|X| |
+> | |X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |
+> |X|X|X|X|X|X|X|X|X| |
+
+Move priorities:
+
+1. Makes Tetris
+2. Clears holes (needs line clears)
+3. Clears lines (if board is high)
+4. Does not make holes and valleys
+
+New Feature:
+Fit - How many positions can the next piece fit on the board, without making holes.
+
+Ideally, there should at least be more positions that the next piece can fit in.
+
+This is introduced to tackle the problem of topping off due to not being able to place the next
+piece well. While the agent is capable of stacking the board properly now, there are issues
+where the agent just isnt able to fit everything nicely
+
+### Changes to Implement
+
+Change the valley system to be more robust: Split into 2 features: number of valleys and height
+of valleys. This is needed to make sure that valleys are not created AND not deepened.
+
+Change holes covered to only be for the highest hole. This is so that we can tackle multiple holes.
+When there is multiple holes, we need to clear the one at the highest, before we can clear the other ones.
+
+In addition to a right well, make sure that the third most right column is higher than the second by 1.
+This is a very useful corner to have, as it allows for the easy burning of S, Z, O, L, J pieces. T
+pieces can be burned, leaving behind one cell of overhang, which is not hard to burn off again.
+
+The main issue is that it stacks well, but stacks high and eventually can top off due to overhangs.
+If the agent doesn't end up with a bad piece sequence and make too many valleys, then it can perform
+very well. But, it struggles to deal with 2 holes at once. The 'holes covered' feature was implemented
+to prevent stacking onto holes as it means that we need to clear more lines. However, if there are 2 holes
+(or more), then it becomes more important to clear the hole at a higher height, than to avoid
+stacking on other holes.
+
+If anything, if holes are to be made, they should be done at the right well. It is easier to clear holes
+made at the right well (since they mean that line clears will be at the highest row possible).
+
+For reference, the agent can achieve 60% Tetris rate, which is really good (slightly above 60% rate is
+stable enough for a max out score of 9999999).
+
+16/9:
+Agent stacks well, but dies due to topping off (stacks in the middle and dies)
+
+This mainly happens as the agent does not give itself space to play.
+
+After changing the priority logic, agent now stacks very well, but tops off due to not clearing
+enough lines.
+
+Issue: By move priority, only the I piece can fix the left side of the board.
+L or J piece can cover one side, but leave a valley on the other.
+
+This is a big issue as the agent does not seem to stack super efficiently.
+
+| | | | | |=|=|=|=| |    | | | | | |=|=|=| | |
+| | | | | | | | | | |    | | | | | | |=| | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | |X| | | | | |    | | | | |X|X|X|X|X| |
+| | | |X|X|X|X|X|X|X|    | | | |X|X|X|X|X|X|X|
+| | | |X|X|X|X|X|X|X|    | | | |X|X|X|X|X|X|X|
+| |X| |X|X|X|X|X|X| |    | |X| |X|X|X|X|X|X| |
+| |X| |X|X|X|X|X|X| |    | |X| |X|X|X|X|X|X| |
+|X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+|X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+|X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+|X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+|X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+
+Bumpiness is normally used to differentiate between boards. However, since it is the absolute
+difference, it cannot differentiate between these 2 boards:
+
+| | | | | |=|=|=|=| |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | | | | | | | |    | | | | | | | | | | |
+| | | | |X| | | | | |    | | | | |X| | | | | |
+| | | |X|X|X|X|X|X|X|    |X| | |X|X|X|X|X|X|X|
+| | | |X|X|X|X|X|X|X|    |X| | |X|X|X|X|X|X|X|
+| |X| |X|X|X|X|X|X| |    |X|X| |X|X|X|X|X|X| |
+| |X| |X|X|X|X|X|X| |    |X|X| |X|X|X|X|X|X| |
+|X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+|X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+|X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+|X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+|X|X|X|X|X|X|X|X|X| |    |X|X|X|X|X|X|X|X|X| |
+
+Hence, we can try to define a new feature:
+
+height_below_median_height - squared difference in height of columns below the median height
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Changelog
 

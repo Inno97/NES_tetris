@@ -91,6 +91,7 @@ with tf.device('/GPU:0'):
         action, state = network.act(obs)
       else:
         break
+      env.update_state(state)
       obs, reward, sample_done, info = env.step(action)
     env.render()
 

@@ -77,7 +77,7 @@ class Piece:
       rotation (int): The amount to rotate the Piece (positive is clockwise, negative is 
       anti-clockwise).
     Returns:
-      The coordinates of the Piece as a Lists of Lists of (X, Y) for each cell that it occupies.
+      The coordinates of the Piece as a Lists of Lists of (Y, X) for each cell that it occupies.
     """
     curr_x = self.x + x
     curr_y = self.y + y

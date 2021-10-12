@@ -34,8 +34,8 @@ LINES_FIRST_LEVEL_JUMP = [[10,
 LINES_PER_LEVEL = 10 
 
 # reinforcement learning
-ACTION_SIZE = 13
-STATE_SIZE = 9
+ACTION_SIZE = 91
+STATE_SIZE = config['SETTINGS']['STATE_SIZE']
 
 # Paths
 WEIGHT_PATH = os.path.join(os.path.dirname(__file__), 'weights\\' + \
